@@ -13,7 +13,7 @@
 (function () {
     "use strict";
 
-    const PATCH_VERSION = "2026.08.14.1";
+    const PATCH_VERSION = "2026.08.14.2";
 
     console.info(
         `[ACC Schedule Manager] patches loaded: ${PATCH_VERSION}`
@@ -23,23 +23,23 @@
        AUTO-SWITCH QUARTER WHEN WEEK NAVIGATION ENTERS ONE
        --------------------------------------------------------- */
 
-    window.syncQuarterSelectionToCurrentWeek = function () {
+    function syncQuarterSelectionToCurrentWeekPatch() {
         if (
-            !Array.isArray(window.allSchedulingPeriods) ||
-            window.allSchedulingPeriods.length === 0 ||
-            !window.currentWeekStart
+            !Array.isArray(allSchedulingPeriods) ||
+            allSchedulingPeriods.length === 0 ||
+            !currentWeekStart
         ) {
             return;
         }
 
         const weekStart =
-            window.getDateKey(
-                window.currentWeekStart
+            getDateKey(
+                currentWeekStart
             );
 
         const weekEndDate =
             new Date(
-                window.currentWeekStart
+                currentWeekStart
             );
 
         weekEndDate.setDate(
@@ -47,12 +47,12 @@
         );
 
         const weekEnd =
-            window.getDateKey(
+            getDateKey(
                 weekEndDate
             );
 
         const matchingPeriod =
-            window.allSchedulingPeriods.find(
+            allSchedulingPeriods.find(
                 period =>
                     period &&
                     period.active &&
@@ -68,17 +68,17 @@
             return;
         }
 
-        window.viewSchedulingPeriodId =
+        viewSchedulingPeriodId =
             matchingPeriod.id;
 
         const monthKeys =
-            window.getPeriodMonthKeys(
+            getPeriodMonthKeys(
                 matchingPeriod
             );
 
         const assignedMonth =
-            window.getAssignedMonthKeyForWeekDate(
-                window.currentWeekStart
+            getAssignedMonthKeyForWeekDate(
+                currentWeekStart
             );
 
         if (
@@ -86,32 +86,28 @@
                 assignedMonth
             )
         ) {
-            window.viewMonthKey =
+            viewMonthKey =
                 assignedMonth;
         } else if (
-            !window.viewMonthKey ||
+            !viewMonthKey ||
             !monthKeys.includes(
-                window.viewMonthKey
+                viewMonthKey
             )
         ) {
-            window.viewMonthKey =
+            viewMonthKey =
                 monthKeys[0] || null;
         }
-    };
+    }
 
-    /*
-     * Wrap renderSchedule rather than replacing its implementation.
-     * This keeps the patch resilient as the main scheduler evolves.
-     */
     if (
-        typeof window.renderSchedule === "function"
+        typeof renderSchedule === "function"
     ) {
         const originalRenderSchedule =
-            window.renderSchedule;
+            renderSchedule;
 
-        window.renderSchedule = function (...args) {
+        renderSchedule = function (...args) {
             try {
-                window.syncQuarterSelectionToCurrentWeek();
+                syncQuarterSelectionToCurrentWeekPatch();
             } catch (error) {
                 console.warn(
                     "Quarter auto-switch patch failed:",
