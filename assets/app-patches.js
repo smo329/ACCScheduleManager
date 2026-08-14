@@ -1,14 +1,14 @@
 /*
  * ACC Schedule Manager - Post-load patches
  *
- * Loaded AFTER the main inline application code so targeted fixes and
+ * Loaded AFTER the main application scripts so targeted fixes and
  * enhancements can be pushed directly without replacing index.html.
  */
 
 (function () {
     "use strict";
 
-    const PATCH_VERSION = "2026.08.14.3";
+    const PATCH_VERSION = "2026.08.14.4";
 
     console.info(
         `[ACC Schedule Manager] patches loaded: ${PATCH_VERSION}`
@@ -112,6 +112,39 @@
                 this,
                 args
             );
+        };
+    }
+
+    /* ---------------------------------------------------------
+       EXCLUDE ADMINS FROM WEEKLY SUBMISSION COUNTS
+       --------------------------------------------------------- */
+
+    if (
+        typeof renderWorkflowPanel === "function"
+    ) {
+        const originalRenderWorkflowPanel =
+            renderWorkflowPanel;
+
+        renderWorkflowPanel = function (...args) {
+            const originalProfiles =
+                profiles;
+
+            try {
+                profiles =
+                    originalProfiles.filter(
+                        profile =>
+                            profile &&
+                            profile.role !== "admin"
+                    );
+
+                return originalRenderWorkflowPanel.apply(
+                    this,
+                    args
+                );
+            } finally {
+                profiles =
+                    originalProfiles;
+            }
         };
     }
 })();
