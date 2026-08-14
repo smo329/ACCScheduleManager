@@ -317,3 +317,13 @@
     document.body.appendChild(script);
   }
 })();
+
+/* Load admin schedule change history. */
+(function () {
+  if (!document.querySelector('script[src="assets/schedule-history-patches.js"]')) {
+    const script = document.createElement("script");
+    script.src = "assets/schedule-history-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
+  }
+})();
