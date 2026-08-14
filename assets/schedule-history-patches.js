@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2026.08.14.1";
+  const VERSION = "2026.08.14.2";
   const MAX_ROWS = 500;
   console.info(`[ACC Schedule Manager] schedule history patch loaded: ${VERSION}`);
 
@@ -15,7 +15,7 @@
 
   function profileNameById(id) {
     if (!id) return "System";
-    const profile = (window.profiles || []).find(p => p.id === id);
+    const profile = profiles.find(p => p.id === id);
     if (!profile) return "Unknown user";
     if (typeof getProfileName === "function") return getProfileName(profile);
     return `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Unknown user";
@@ -175,16 +175,16 @@
     if (!quarter || !employee) return;
 
     quarter.innerHTML = "";
-    (window.allSchedulingPeriods || []).forEach(period => {
+    allSchedulingPeriods.forEach(period => {
       const option = document.createElement("option");
       option.value = period.id;
       option.textContent = period.name;
-      if (window.adminSchedulingPeriod && period.id === adminSchedulingPeriod.id) option.selected = true;
+      if (adminSchedulingPeriod && period.id === adminSchedulingPeriod.id) option.selected = true;
       quarter.appendChild(option);
     });
 
     employee.innerHTML = `<option value="">All employees</option>`;
-    [...(window.profiles || [])]
+    [...profiles]
       .filter(p => p.role !== "admin")
       .sort((a,b) => profileNameById(a.id).localeCompare(profileNameById(b.id)))
       .forEach(profile => {
@@ -199,7 +199,7 @@
 
   function selectedPeriod() {
     const id = document.getElementById("historyQuarterSelect")?.value;
-    return (window.allSchedulingPeriods || []).find(p => p.id === id) || null;
+    return allSchedulingPeriods.find(p => p.id === id) || null;
   }
 
   function populateWeekFilter() {
