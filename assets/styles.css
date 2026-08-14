@@ -419,12 +419,16 @@
         }
 
         /* TABLE */
-        .table-container {
+        .table-container,
+        .table-scroll {
             width: 100%;
+            max-width: 100%;
             background: white;
             border-radius: 0 0 8px 8px;
             box-shadow: 0 1px 5px rgba(0,0,0,.10);
             overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
@@ -817,6 +821,7 @@
         .quarter-dashboard-table-wrap {
             overflow-x: auto;
             border-top: 1px solid #e5e7eb;
+            -webkit-overflow-scrolling: touch;
         }
 
         .quarter-dashboard-table {
@@ -970,5 +975,546 @@
             .week-right {
                 flex-wrap: wrap;
                 justify-content: center;
+            }
+        }
+
+        /* =====================================================
+           MOBILE / TOUCH LAYOUT
+           ===================================================== */
+        @media (max-width: 760px) {
+            html, body {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            body {
+                font-size: 14px;
+            }
+
+            /* Login becomes edge-to-edge enough for small phones. */
+            #loginScreen {
+                min-height: 100dvh;
+                padding: 14px;
+                align-items: center;
+            }
+
+            .login-box {
+                max-width: none;
+                padding: 24px 18px;
+                border-radius: 10px;
+            }
+
+            .login-box h1 {
+                font-size: 24px;
+            }
+
+            .form-group input,
+            .form-group select,
+            textarea {
+                font-size: 16px;
+                min-height: 44px;
+            }
+
+            /* Avoid iOS zooming inputs and give touch targets room. */
+            button,
+            .topbar-button,
+            .admin-button,
+            .week-button,
+            .workflow-button,
+            .modal-button,
+            .quarter-week-button {
+                min-height: 42px;
+                touch-action: manipulation;
+            }
+
+            /* Top bar wraps into a compact mobile toolbar. */
+            .topbar {
+                position: sticky;
+                top: 0;
+                z-index: 500;
+                padding: 10px 10px 9px;
+                display: block;
+            }
+
+            .topbar-title {
+                text-align: center;
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+
+            .topbar-user {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            .topbar-user .user-name,
+            .topbar-user .role-badge {
+                display: none;
+            }
+
+            .topbar-button,
+            .admin-button {
+                flex: 1 1 auto;
+                min-width: 86px;
+                padding: 8px 9px;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            #accountRequestBell {
+                flex: 0 0 44px;
+                min-width: 44px;
+            }
+
+            .main-content {
+                padding: 8px;
+            }
+
+            /* Week navigation: title first, then 3 equal touch buttons. */
+            .schedule-header {
+                padding: 12px 10px;
+                gap: 8px;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .week-title {
+                grid-column: 1 / -1;
+                grid-row: 1;
+                font-size: 18px;
+                line-height: 1.25;
+            }
+
+            .week-left {
+                width: 100%;
+                justify-self: stretch;
+                grid-column: 1;
+            }
+
+            .week-right {
+                width: 100%;
+                justify-self: stretch;
+                grid-column: 2;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+
+            .week-left .week-button,
+            .week-right .week-button {
+                width: 100%;
+                padding: 8px 6px;
+                font-size: 11px;
+            }
+
+            .quarter-nav {
+                padding: 12px;
+                gap: 10px;
+                grid-template-columns: 1fr;
+            }
+
+            .quarter-nav select {
+                min-height: 44px;
+                font-size: 16px;
+            }
+
+            .quarter-week-list {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+            }
+
+            .quarter-week-button {
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+
+            .notice,
+            .error-banner {
+                padding: 10px 12px;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+
+            .workflow-panel {
+                display: block;
+                padding: 12px;
+            }
+
+            .workflow-left,
+            .workflow-actions {
+                width: 100%;
+            }
+
+            .workflow-left {
+                display: flex;
+                gap: 7px;
+                margin-bottom: 9px;
+            }
+
+            .workflow-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0,1fr));
+                gap: 7px;
+            }
+
+            .workflow-button {
+                width: 100%;
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .workflow-summary {
+                width: 100%;
+                line-height: 1.4;
+            }
+
+            /* Clinics stack vertically. Table itself scrolls inside its panel. */
+            .clinic-grid {
+                display: block;
+            }
+
+            .clinic-panel {
+                width: 100%;
+                margin-bottom: 14px;
+                overflow: hidden;
+                border-radius: 8px;
+            }
+
+            .clinic-title {
+                font-size: 16px;
+                padding: 10px 12px;
+            }
+
+            .table-scroll,
+            .table-container {
+                display: block;
+                width: 100%;
+                max-width: calc(100vw - 16px);
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+            }
+
+            .table-scroll table,
+            .table-container table {
+                width: max-content;
+                min-width: 760px;
+            }
+
+            th, td {
+                height: 44px;
+                padding: 4px;
+            }
+
+            .name-column {
+                min-width: 118px;
+                width: 118px;
+                max-width: 118px;
+                padding-left: 8px;
+                box-shadow: 2px 0 4px rgba(15,23,42,.08);
+            }
+
+            .employee-name {
+                font-size: 11px;
+                line-height: 1.2;
+                white-space: normal;
+            }
+
+            .date-header,
+            .schedule-cell {
+                min-width: 62px;
+                width: 62px;
+            }
+
+            .hours-column {
+                min-width: 64px;
+                width: 64px;
+            }
+
+            .weekend-counter-cell {
+                min-width: 72px;
+                width: 72px;
+            }
+
+            .schedule-select,
+            .capacity-select {
+                min-height: 38px;
+                height: 38px;
+                font-size: 14px;
+            }
+
+            .work-site-select {
+                min-height: 26px;
+                font-size: 11px;
+            }
+
+            .comment-button {
+                width: 24px;
+                height: 24px;
+                font-size: 13px;
+            }
+
+            .legend {
+                padding: 12px;
+            }
+
+            .legend-grid,
+            .legend-items {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 12px;
+                font-size: 12px;
+            }
+
+            /* Modals behave like mobile screens, so close is always reachable. */
+            .modal-overlay {
+                padding: 0;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+
+            .modal-overlay.show {
+                display: flex;
+            }
+
+            .modal,
+            .modal-wide {
+                width: 100%;
+                max-width: none;
+                height: 100dvh;
+                max-height: 100dvh;
+                border-radius: 0;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .modal-header {
+                flex: 0 0 auto;
+                padding: 12px 14px;
+                position: sticky;
+                top: 0;
+                z-index: 5;
+            }
+
+            .modal-title {
+                font-size: 17px;
+            }
+
+            .modal-close {
+                width: 44px;
+                height: 44px;
+                font-size: 28px;
+                padding: 0;
+            }
+
+            .modal-body,
+            .modal-scroll {
+                flex: 1 1 auto;
+                min-height: 0;
+                max-height: none;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 14px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .modal-footer {
+                flex: 0 0 auto;
+                padding: 10px 12px;
+                background: white;
+                position: sticky;
+                bottom: 0;
+                z-index: 5;
+            }
+
+            .modal-footer .modal-button {
+                flex: 1 1 0;
+            }
+
+            .admin-top {
+                display: grid;
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+
+            .admin-top .modal-button {
+                width: 100%;
+            }
+
+            .add-person-section {
+                padding: 12px;
+            }
+
+            .add-person-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .admin-action-row,
+            .person-buttons {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0,1fr));
+                gap: 7px;
+            }
+
+            .admin-action-row .modal-button,
+            .person-buttons .modal-button {
+                width: 100%;
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+
+            .person-card {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                padding: 12px;
+            }
+
+            /* Quarter dashboard cards fit without horizontal page scrolling. */
+            .quarter-dashboard {
+                width: 100%;
+                margin-bottom: 12px;
+            }
+
+            .quarter-dashboard-header {
+                padding: 12px;
+            }
+
+            .quarter-dashboard-cards {
+                grid-template-columns: repeat(2, minmax(0,1fr));
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .quarter-dashboard-card {
+                padding: 9px;
+                min-width: 0;
+            }
+
+            .quarter-dashboard-card-label {
+                font-size: 10px;
+                line-height: 1.2;
+            }
+
+            .quarter-dashboard-card-value {
+                font-size: 18px;
+            }
+
+            .quarter-dashboard-table-wrap {
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .quarter-dashboard-table {
+                min-width: 760px;
+            }
+
+            .quarter-dashboard-table th:first-child,
+            .quarter-dashboard-table td:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 2;
+                background: white;
+                min-width: 115px;
+                box-shadow: 2px 0 4px rgba(15,23,42,.08);
+            }
+
+            .quarter-dashboard-table th:first-child {
+                background: #f8fafc;
+                z-index: 3;
+            }
+
+            /* Inline admin quarter creation grids are desktop-oriented. */
+            #adminModal .modal-body div[style*="grid-template-columns:minmax(260px,1fr) auto"],
+            #adminModal .modal-body div[style*="grid-template-columns:1.4fr 1fr 1fr auto"] {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                align-items: stretch !important;
+            }
+
+            #deleteQuarterButton,
+            #createQuarterButton {
+                width: 100%;
+            }
+
+            /* Account side navigation can scroll horizontally instead of squeezing. */
+            .account-settings-layout {
+                display: block !important;
+            }
+
+            .account-settings-sidebar,
+            .account-settings-menu {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: flex !important;
+                flex-direction: row !important;
+                overflow-x: auto;
+                gap: 6px;
+                padding-bottom: 8px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .account-settings-nav-button,
+            .account-settings-menu button {
+                flex: 0 0 auto;
+                white-space: nowrap;
+                min-height: 42px;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .topbar-user {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0,1fr));
+            }
+
+            #accountRequestBell {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .schedule-header {
+                grid-template-columns: 1fr;
+            }
+
+            .week-title,
+            .week-left,
+            .week-right {
+                grid-column: 1;
+            }
+
+            .week-right {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .week-left .week-button {
+                width: 100%;
+            }
+
+            .workflow-actions,
+            .admin-action-row,
+            .person-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .quarter-dashboard-cards {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .legend-grid,
+            .legend-items {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-body,
+            .modal-scroll {
+                padding: 12px;
             }
         }
