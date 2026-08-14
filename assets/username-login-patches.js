@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2026.08.14.2";
+  const VERSION = "2026.08.14.3";
   console.info(`[ACC Schedule Manager] username login patch loaded: ${VERSION}`);
 
   function normalizeUsername(value) {
@@ -242,4 +242,14 @@
   }
 
   updateLoginUi();
+})();
+
+/* Load the mobile week-strip scrolling fix without requiring another index edit. */
+(function () {
+  if (document.querySelector('link[href="assets/mobile-week-scroll.css"]')) return;
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "assets/mobile-week-scroll.css";
+  document.head.appendChild(link);
 })();
