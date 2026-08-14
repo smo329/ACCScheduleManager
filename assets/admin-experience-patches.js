@@ -290,12 +290,20 @@
 
 /* Load employment-history behavior without requiring another index.html edit. */
 (function () {
-  if (document.querySelector('script[src="assets/employment-history-patches.js"]')) {
-    return;
+  if (!document.querySelector('script[src="assets/employment-history-patches.js"]')) {
+    const script = document.createElement("script");
+    script.src = "assets/employment-history-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
   }
+})();
 
-  const script = document.createElement("script");
-  script.src = "assets/employment-history-patches.js";
-  script.defer = false;
-  document.body.appendChild(script);
+/* Load login access requests and the admin bell. */
+(function () {
+  if (!document.querySelector('script[src="assets/account-request-patches.js"]')) {
+    const script = document.createElement("script");
+    script.src = "assets/account-request-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
+  }
 })();
