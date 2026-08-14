@@ -2244,17 +2244,27 @@ async function loadWeek() {
     }
 
     if (periodResult.error) {
-        console.error(
+        console.warn(
+            "Unable to load scheduling periods:",
             periodResult.error
         );
 
-        showError(
-            "Unable to load scheduling period: "
-            +
-            periodResult.error.message
-        );
+        /*
+         * Scheduling periods are an enhancement. Fall back to
+         * the normal weekly scheduler if they cannot be loaded.
+         */
+        periodResult.data = [];
 
-        return;
+        if (
+            currentProfile.role ===
+            "admin"
+        ) {
+            showError(
+                "The weekly schedule loaded, but scheduling-quarter settings could not be loaded. "
+                +
+                periodResult.error.message
+            );
+        }
     }
 
     profiles =
@@ -2456,39 +2466,60 @@ async function loadWeek() {
         if (
             accessError
         ) {
-            showError(
-                "Unable to load scheduling access: "
-                +
-                accessError.message
+
+            console.warn(
+                "Unable to load scheduling access:",
+                accessError
             );
-            return;
-        }
 
-        (
-            accessRows || []
-        ).forEach(
-            row => {
-                if (
-                    activeSchedulingPeriod &&
-                    row.period_id ===
-                        activeSchedulingPeriod.id
-                ) {
-                    schedulingAccess[
-                        row.user_id
-                    ] = row;
-                }
-
-                if (
-                    adminSchedulingPeriod &&
-                    row.period_id ===
-                        adminSchedulingPeriod.id
-                ) {
-                    adminSchedulingAccess[
-                        row.user_id
-                    ] = row;
-                }
+            /*
+             * Quarter-management features should never prevent
+             * the normal weekly schedule from rendering.
+             *
+             * The most common cause here is that the newest
+             * weekend_target_override migration has not been
+             * run yet. Keep the weekly schedule working while
+             * surfacing a useful warning to the administrator.
+             */
+            if (
+                currentProfile.role ===
+                "admin"
+            ) {
+                showError(
+                    "The weekly schedule loaded, but quarter access settings could not be loaded. Make sure the latest Supabase SQL migration has been run. "
+                    +
+                    accessError.message
+                );
             }
-        );
+
+        } else {
+
+            (
+                accessRows || []
+            ).forEach(
+                row => {
+                    if (
+                        activeSchedulingPeriod &&
+                        row.period_id ===
+                            activeSchedulingPeriod.id
+                    ) {
+                        schedulingAccess[
+                            row.user_id
+                        ] = row;
+                    }
+
+                    if (
+                        adminSchedulingPeriod &&
+                        row.period_id ===
+                            adminSchedulingPeriod.id
+                    ) {
+                        adminSchedulingAccess[
+                            row.user_id
+                        ] = row;
+                    }
+                }
+            );
+        }
     }
 
     const periodsToLoad =
@@ -2538,30 +2569,46 @@ async function loadWeek() {
         if (
             weekendError
         ) {
-            showError(
-                "Unable to load quarter weekend totals: "
-                +
-                weekendError.message
+
+            console.warn(
+                "Unable to load quarter weekend totals:",
+                weekendError
             );
-            return;
-        }
 
-        if (
-            activeSchedulingPeriod &&
-            period.id ===
-                activeSchedulingPeriod.id
-        ) {
-            activeWeekendScheduleRows =
-                weekendRows || [];
-        }
+            /*
+             * Weekend statistics are supplemental. A failure
+             * here must not blank out the main weekly schedule.
+             */
+            if (
+                currentProfile.role ===
+                "admin"
+            ) {
+                showError(
+                    "The weekly schedule loaded, but quarter weekend totals could not be loaded. "
+                    +
+                    weekendError.message
+                );
+            }
 
-        if (
-            adminSchedulingPeriod &&
-            period.id ===
-                adminSchedulingPeriod.id
-        ) {
-            quarterWeekendScheduleRows =
-                weekendRows || [];
+        } else {
+
+            if (
+                activeSchedulingPeriod &&
+                period.id ===
+                    activeSchedulingPeriod.id
+            ) {
+                activeWeekendScheduleRows =
+                    weekendRows || [];
+            }
+
+            if (
+                adminSchedulingPeriod &&
+                period.id ===
+                    adminSchedulingPeriod.id
+            ) {
+                quarterWeekendScheduleRows =
+                    weekendRows || [];
+            }
         }
     }
 
