@@ -232,12 +232,7 @@
             saveScheduleValue;
 
         saveScheduleValue =
-            async function (
-                userId,
-                dateKey,
-                scheduleCode,
-                workSite = null
-            ) {
+            async function (...args) {
                 if (
                     isClinicManager()
                 ) {
@@ -248,33 +243,11 @@
                     return false;
                 }
 
-                const success =
-                    await originalSaveScheduleValue.apply(
+                return originalSaveScheduleValue
+                    .apply(
                         this,
-                        arguments
+                        args
                     );
-
-                if (
-                    success &&
-                    typeof window.notifyClinicManagersOfScheduleChange ===
-                        "function"
-                ) {
-                    window
-                        .notifyClinicManagersOfScheduleChange(
-                            userId,
-                            dateKey,
-                            "schedule"
-                        )
-                        .catch(
-                            error =>
-                                console.warn(
-                                    "Manager schedule-update notification failed:",
-                                    error
-                                )
-                        );
-                }
-
-                return success;
             };
     }
 
@@ -742,7 +715,7 @@
 
                 <span>
                     <strong>
-                        Email me when schedules are updated
+                        Email me a daily summary when schedules are updated
                     </strong>
 
                     <span
@@ -753,7 +726,7 @@
                             margin-top:3px;
                         "
                     >
-                        Alerts are grouped to avoid sending an email for every individual schedule edit.
+                        One end-of-day email summarizes schedule, leave, and comment changes for your assigned clinic.
                     </span>
                 </span>
             </label>
@@ -997,8 +970,8 @@
 
             showAccountMessage(
                 enabled.checked
-                    ? `Schedule-update notifications are on. Alerts will be sent to ${destination}.`
-                    : "Schedule-update email notifications are off."
+                    ? `Daily schedule-summary notifications are on. The digest will be sent to ${destination}.`
+                    : "Daily schedule-summary email notifications are off."
             );
 
         } catch (
@@ -1065,63 +1038,11 @@
             };
     }
 
-    window.notifyClinicManagersOfScheduleChange =
-        async function (
-            employeeId,
-            scheduleDate,
-            changeType =
-                "schedule"
-        ) {
-            if (
-                !currentUser ||
-                isClinicManager()
-            ) {
-                return;
-            }
-
-            const {
-                data,
-                error
-            } =
-                await supabaseClient
-                    .functions
-                    .invoke(
-                        "send-manager-schedule-update",
-                        {
-                            body: {
-                                employee_id:
-                                    employeeId,
-
-                                schedule_date:
-                                    scheduleDate,
-
-                                change_type:
-                                    changeType
-                            }
-                        }
-                    );
-
-            if (
-                error
-            ) {
-                console.warn(
-                    "Manager notification function failed:",
-                    error
-                );
-
-                return;
-            }
-
-            if (
-                data &&
-                data.error
-            ) {
-                console.warn(
-                    "Manager notification function returned an error:",
-                    data.error
-                );
-            }
-        };
+    /*
+     * Schedule, leave, and comment changes are recorded by database
+     * triggers. A 6 PM Eastern daily digest summarizes the prior
+     * 24 hours for each opted-in manager's assigned clinic.
+     */
 
     addManagerRoleOption();
 
