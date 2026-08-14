@@ -2,7 +2,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2026.08.14.1";
+  const VERSION = "2026.08.14.2";
   console.info(`[ACC Schedule Manager] external shift worker patch loaded: ${VERSION}`);
 
   function isExternal() {
@@ -61,8 +61,11 @@
     const sync = () => {
       const external = roleSelect.value === "external";
       clinicSelect.disabled = external;
-      if (external) clinicSelect.value = "";
-      else if (!clinicSelect.value) clinicSelect.value = "Turfland";
+      if (external) {
+        if (clinicSelect.value !== "") clinicSelect.value = "";
+      } else if (!clinicSelect.value) {
+        clinicSelect.value = "Turfland";
+      }
     };
 
     if (!roleSelect.dataset.externalRoleBound) {
@@ -141,8 +144,16 @@
       const profile = profiles[index];
       if (!profile) return;
       const children = [...card.children];
-      if (children[1] && profile.role === "external") children[1].textContent = "Open shifts only · No primary clinic";
-      if (children[2]) children[2].textContent = labelForRole(profile.role);
+
+      if (children[1] && profile.role === "external") {
+        const desired = "Open shifts only · No primary clinic";
+        if (children[1].textContent !== desired) children[1].textContent = desired;
+      }
+
+      if (children[2]) {
+        const desiredRole = labelForRole(profile.role);
+        if (children[2].textContent !== desiredRole) children[2].textContent = desiredRole;
+      }
 
       if (profile.role !== "employee") {
         card.querySelectorAll("button").forEach(button => {
@@ -289,11 +300,24 @@
     document.head.appendChild(style);
   }
 
+  /* Only polish immediately after the people list is deliberately rendered. */
   const originalRenderPeopleList = typeof renderPeopleList === "function" ? renderPeopleList : null;
   if (originalRenderPeopleList) {
     window.renderPeopleList = function () {
       const result = originalRenderPeopleList.apply(this, arguments);
       setTimeout(polishPeopleList, 0);
+      return result;
+    };
+  }
+
+  const originalOpenAdmin = typeof openAdmin === "function" ? openAdmin : null;
+  if (originalOpenAdmin) {
+    window.openAdmin = function () {
+      const result = originalOpenAdmin.apply(this, arguments);
+      setTimeout(() => {
+        ensureRoleOptions();
+        polishPeopleList();
+      }, 0);
       return result;
     };
   }
@@ -307,21 +331,31 @@
     };
   }
 
-  const observer = new MutationObserver(() => {
-    ensureRoleOptions();
-    polishPeopleList();
-    if (isExternal()) setTimeout(augmentExternalSignups, 40);
-
-    const button = document.getElementById("openShiftsTopButton");
-    if (button && button.onclick !== window.openOpenShifts) button.onclick = window.openOpenShifts;
-  });
+  /*
+   * Observe only Open Shifts content for external signup cards.
+   * Do NOT observe the whole document or Manage People; doing so creates
+   * a feedback loop when role/site labels are polished.
+   */
+  let openShiftObserver = null;
+  function attachOpenShiftObserver() {
+    const content = document.getElementById("openShiftContent");
+    if (!content || openShiftObserver) return;
+    openShiftObserver = new MutationObserver(() => {
+      if (isExternal()) setTimeout(augmentExternalSignups, 40);
+    });
+    openShiftObserver.observe(content, { childList: true, subtree: true });
+  }
 
   ensureStyles();
-  observer.observe(document.body, { childList: true, subtree: true });
   setTimeout(() => {
     ensureRoleOptions();
     polishPeopleList();
+    attachOpenShiftObserver();
     const button = document.getElementById("openShiftsTopButton");
     if (button) button.onclick = window.openOpenShifts;
   }, 0);
+
+  /* Open Shifts modal is created lazily, so retry observer attachment briefly. */
+  setTimeout(attachOpenShiftObserver, 500);
+  setTimeout(attachOpenShiftObserver, 1500);
 })();
