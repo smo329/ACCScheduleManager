@@ -6,7 +6,7 @@
 (function () {
     "use strict";
 
-    const VERSION = "2026.08.14.3";
+    const VERSION = "2026.08.14.4";
 
     console.info(
         `[ACC Schedule Manager] email availability patch loaded: ${VERSION}`
@@ -159,6 +159,18 @@
 
     const script = document.createElement("script");
     script.src = "assets/username-login-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
+})();
+
+/* Load admin schedule audit history. */
+(function () {
+    if (document.querySelector('script[src="assets/schedule-history-patches.js"]')) {
+        return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "assets/schedule-history-patches.js";
     script.defer = false;
     document.body.appendChild(script);
 })();
