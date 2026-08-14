@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2026.08.14.1";
+  const VERSION = "2026.08.14.2";
   console.info(`[ACC Schedule Manager] username login patch loaded: ${VERSION}`);
 
   function normalizeUsername(value) {
@@ -156,7 +156,6 @@
     `;
 
     emailGroup.insertAdjacentElement("afterend", group);
-
     group.querySelector("#saveUsernameButton").onclick = saveUsername;
 
     return group;
@@ -195,24 +194,23 @@
     button.textContent = "Saving...";
 
     try {
-      const { error } = await supabaseClient
-        .from("profiles")
-        .update({ username })
-        .eq("id", currentUser.id);
-
-      if (error) {
-        if (error.code === "23505") {
-          throw new Error("That username is already in use. Please choose another one.");
+      const { data, error } = await supabaseClient.functions.invoke(
+        "update-username",
+        {
+          body: { username }
         }
-        throw new Error(error.message);
+      );
+
+      if (error || data?.error || !data?.success) {
+        throw new Error(data?.error || error?.message || "Unable to save username.");
       }
 
-      input.value = username;
+      input.value = data.username;
 
-      if (currentProfile) currentProfile.username = username;
+      if (currentProfile) currentProfile.username = data.username;
 
       if (typeof showAccountMessage === "function") {
-        showAccountMessage(`Username saved. You can now sign in as ${username}.`);
+        showAccountMessage(`Username saved. You can now sign in as ${data.username}.`);
       }
 
     } catch (error) {
