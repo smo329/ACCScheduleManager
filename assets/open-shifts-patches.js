@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2026.08.14.1";
+  const VERSION = "2026.08.14.2";
   const CLINICS = ["Turfland", "Fountain Court"];
   console.info(`[ACC Schedule Manager] open shifts patch loaded: ${VERSION}`);
 
@@ -39,9 +39,11 @@
   }
 
   function fmtHour(hour) {
-    if (hour === 0 || hour === 24) return "12 AM";
-    if (hour === 12) return "12 PM";
-    return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+    const h = Number(hour);
+    if (!Number.isFinite(h)) return "—";
+    if (h === 0 || h === 24) return "12 AM";
+    if (h === 12) return "12 PM";
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
   }
 
   function profileName(id) {
@@ -260,7 +262,7 @@
         const c = item.claim;
         const cancel = (isAdmin() || c.user_id === currentUser.id)
           ? `<button class="modal-button cancel-button cancel-open-claim" data-id="${c.id}" type="button">Remove</button>` : "";
-        lines.push(`<div class="open-shift-line"><span class="open-shift-covered">${fmtHour(c.start)}–${fmtHour(c.end)} — ${esc(profileName(c.user_id))}</span>${cancel}</div>`);
+        lines.push(`<div class="open-shift-line"><span class="open-shift-covered">${fmtHour(c.start_hour)}–${fmtHour(c.end_hour)} — ${esc(profileName(c.user_id))}</span>${cancel}</div>`);
       } else {
         lines.push(`<div class="open-shift-line"><span class="open-shift-available">${fmtHour(item.start)}–${fmtHour(item.end)} — Available</span></div>`);
         if (isEmployee() && item.end-item.start >= 2) {
