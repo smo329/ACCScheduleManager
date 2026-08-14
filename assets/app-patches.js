@@ -1,19 +1,14 @@
 /*
  * ACC Schedule Manager - Post-load patches
  *
- * This file is intentionally loaded AFTER the main inline application code.
- * Future fixes and enhancements can be pushed here directly from ChatGPT
- * without replacing the large index.html file.
- *
- * Once index.html includes:
- *   <script src="assets/app-patches.js"></script>
- * immediately before </body>, keep that line permanently.
+ * Loaded AFTER the main inline application code so targeted fixes and
+ * enhancements can be pushed directly without replacing index.html.
  */
 
 (function () {
     "use strict";
 
-    const PATCH_VERSION = "2026.08.14.2";
+    const PATCH_VERSION = "2026.08.14.3";
 
     console.info(
         `[ACC Schedule Manager] patches loaded: ${PATCH_VERSION}`
@@ -60,10 +55,8 @@
                     weekEnd >= period.period_start
             );
 
-        /*
-         * If this week is outside every defined quarter,
-         * intentionally leave the current quarter selection alone.
-         */
+        // If this week is outside every defined quarter, keep the
+        // currently selected quarter unchanged.
         if (!matchingPeriod) {
             return;
         }
