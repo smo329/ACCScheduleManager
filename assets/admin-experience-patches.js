@@ -307,3 +307,13 @@
     document.body.appendChild(script);
   }
 })();
+
+/* Load quarter-specific weekend requirement controls. */
+(function () {
+  if (!document.querySelector('script[src="assets/quarter-weekend-controls-patches.js"]')) {
+    const script = document.createElement("script");
+    script.src = "assets/quarter-weekend-controls-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
+  }
+})();
