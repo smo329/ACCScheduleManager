@@ -6,7 +6,7 @@
 (function () {
     "use strict";
 
-    const VERSION = "2026.08.14.2";
+    const VERSION = "2026.08.14.3";
 
     console.info(
         `[ACC Schedule Manager] email availability patch loaded: ${VERSION}`
@@ -21,11 +21,6 @@
             return;
         }
 
-        /*
-         * Remove every role-specific email enrollment UI.  The underlying
-         * preference data is intentionally preserved so it can be restored
-         * later without requiring users to reconfigure anything.
-         */
         [
             "scheduleNotificationSettings",
             "managerScheduleNotificationSettings",
@@ -33,9 +28,7 @@
             "dailyDigestNotificationSettings"
         ].forEach(id => {
             const element = document.getElementById(id);
-            if (element) {
-                element.remove();
-            }
+            if (element) element.remove();
         });
 
         Array.from(panel.children).forEach(child => {
@@ -72,9 +65,7 @@
     }
 
     function installStyles() {
-        if (document.getElementById("emailUnavailableStyles")) {
-            return;
-        }
+        if (document.getElementById("emailUnavailableStyles")) return;
 
         const style = document.createElement("style");
         style.id = "emailUnavailableStyles";
@@ -137,11 +128,6 @@
 
     installStyles();
 
-    /*
-     * Account settings are assembled by several post-load patches. Watching
-     * the account modal lets this availability state win regardless of role
-     * or script load order, without touching the working in-app bell system.
-     */
     const observer = new MutationObserver(() => {
         renderEmailUnavailable();
     });
@@ -163,10 +149,16 @@
     }
 
     beginObserving();
+})();
 
-    /*
-     * Intentionally do not install the prior toggleQuarterAccess email hook.
-     * Opening an employee's scheduling picks therefore remains an in-app
-     * scheduling action only while email notifications are unavailable.
-     */
+/* Load username-or-email login and username account settings. */
+(function () {
+    if (document.querySelector('script[src="assets/username-login-patches.js"]')) {
+        return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "assets/username-login-patches.js";
+    script.defer = false;
+    document.body.appendChild(script);
 })();
