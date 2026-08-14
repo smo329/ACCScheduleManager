@@ -181,17 +181,10 @@
                     </div>
                 </div>
 
-                <div class="table-container">
+                <div class="table-scroll">
                     <table>
                         <thead id="turflandHeader"></thead>
-
-                        <tbody id="turflandBody">
-                            <tr>
-                                <td class="loading-cell">
-                                    Loading...
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="turflandBody"></tbody>
                     </table>
                 </div>
             </section>
@@ -205,79 +198,45 @@
                     </div>
                 </div>
 
-                <div class="table-container">
+                <div class="table-scroll">
                     <table>
                         <thead id="fountainHeader"></thead>
-
-                        <tbody id="fountainBody">
-                            <tr>
-                                <td class="loading-cell">
-                                    Loading...
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="fountainBody"></tbody>
                     </table>
                 </div>
             </section>
 
         </div>
 
-        <div class="legend">
+        <section class="legend">
             <div class="legend-title">
                 Schedule Codes
             </div>
 
-            <div class="legend-items">
-                <div class="legend-item">
-                    <strong>0</strong> — No scheduled hours
-                </div>
-
-                <div class="legend-item">
-                    <strong>12</strong> — 12-hour shift
-                </div>
-
-                <div class="legend-item">
-                    <strong>A4</strong> — 4-hour admin time
-                </div>
-
-                <div class="legend-item">
-                    <strong>VL12</strong> — 12 vacation hours
-                </div>
-
-                <div class="legend-item">
-                    <strong>VL4</strong> — 4 vacation hours
-                </div>
-
-                <div class="legend-item">
-                    <strong>PL12</strong> — 12 other leave hours
-                </div>
-
-                <div class="legend-item">
-                    <strong>PL4</strong> — 4 other leave hours
-                </div>
+            <div class="legend-grid">
+                <div><strong>0</strong> — Off / No scheduled hours</div>
+                <div><strong>12</strong> — 12-hour clinical shift</div>
+                <div><strong>A4</strong> — 4-hour admin time</div>
+                <div><strong>VL</strong> — Vacation Leave</div>
+                <div><strong>PL</strong> — Professional Leave</div>
+                <div><strong>TDL</strong> — Temporary Disability Leave</div>
             </div>
-
-            <div class="legend-note">
-                Weekly Total is Sunday through Saturday.
-                Green = exactly 40 hours, yellow = under 40,
-                red = over 40. Admins can change each clinic's
-                daily Shift Capacity from 0–4. A 12-hour shift also has a daily work-site selector. It defaults to the employee's primary clinic but can be changed for floating/cross-coverage. Regular employees cannot add a 12-hour shift when that clinic is full; admins can override after confirmation.
-            </div>
-        </div>
+        </section>
 
     </main>
 </div>
 
 
-<!-- ACCOUNT MANAGER MODAL -->
+<!-- ACCOUNT MODAL -->
 <div
     id="accountModal"
     class="modal-overlay"
 >
     <div class="modal">
+
         <div class="modal-header">
             <div class="modal-title">
-                Account Manager
+                Account Settings
             </div>
 
             <button
@@ -292,8 +251,7 @@
 
             <div
                 id="accountMessage"
-                class="notice"
-                style="display:none;"
+                class="account-message"
             ></div>
 
             <div
@@ -301,7 +259,7 @@
                 class="login-error"
             ></div>
 
-            <h3 style="margin-top:0;">
+            <h3>
                 Personal Information
             </h3>
 
@@ -780,6 +738,7 @@
 <script src="assets/notification-patches.js"></script>
 <script src="assets/account-ui-patches.js"></script>
 <script src="assets/manager-patches.js"></script>
+<script src="assets/admin-experience-patches.js"></script>
 
 </body>
 </html>
