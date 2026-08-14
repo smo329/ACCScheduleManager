@@ -228,6 +228,80 @@
             border-radius: 5px;
         }
 
+        /* QUARTER / MONTH NAVIGATION */
+        .quarter-nav {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) minmax(170px, .6fr) 2fr;
+            gap: 12px;
+            align-items: end;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+        }
+
+        .quarter-nav-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .quarter-nav select {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .quarter-week-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .quarter-week-button {
+            border: 1px solid #cbd5e1;
+            background: white;
+            padding: 7px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .quarter-week-button.active {
+            background: #17365d;
+            border-color: #17365d;
+            color: white;
+        }
+
+        .weekend-counter-cell {
+            min-width: 90px;
+            width: 90px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .weekend-counter-good {
+            background: #dcfce7 !important;
+            color: #166534;
+        }
+
+        .weekend-counter-low {
+            background: #fef3c7 !important;
+            color: #92400e;
+        }
+
+        @media (max-width: 900px) {
+            .quarter-nav {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* WEEK WORKFLOW */
         .workflow-panel {
             background: white;
@@ -901,6 +975,41 @@
             </div>
         </section>
 
+        <section
+            id="quarterNavigator"
+            class="quarter-nav"
+        >
+            <div class="quarter-nav-group">
+                <label for="viewQuarterSelect">
+                    Scheduling Quarter
+                </label>
+                <select
+                    id="viewQuarterSelect"
+                    onchange="changeViewQuarter()"
+                ></select>
+            </div>
+
+            <div class="quarter-nav-group">
+                <label for="viewMonthSelect">
+                    Assigned Month
+                </label>
+                <select
+                    id="viewMonthSelect"
+                    onchange="changeViewMonth()"
+                ></select>
+            </div>
+
+            <div class="quarter-nav-group">
+                <label>
+                    Weeks in Selected Month
+                </label>
+                <div
+                    id="quarterWeekList"
+                    class="quarter-week-list"
+                ></div>
+            </div>
+        </section>
+
         <div
             id="permissionNotice"
             class="notice"
@@ -1465,6 +1574,10 @@ let adminSchedulingPeriod = null;
 let adminSchedulingAccess = {};
 let quarterWeekendScheduleRows = [];
 
+let viewSchedulingPeriodId = null;
+let viewMonthKey = null;
+let monthlyWeekendTargets = {};
+
 let currentWeekStart =
     getSunday(new Date());
 
@@ -1669,6 +1782,10 @@ async function logout() {
     adminSchedulingPeriod = null;
     adminSchedulingAccess = {};
     quarterWeekendScheduleRows = [];
+
+    viewSchedulingPeriodId = null;
+    viewMonthKey = null;
+    monthlyWeekendTargets = {};
 
     document
         .getElementById("password")
@@ -2522,6 +2639,55 @@ async function loadWeek() {
         }
     }
 
+    monthlyWeekendTargets = {};
+
+    if (
+        periodIds.length > 0
+    ) {
+
+        const {
+            data: monthTargetRows,
+            error: monthTargetError
+        } =
+            await supabaseClient
+                .from(
+                    "scheduling_month_weekend_targets"
+                )
+                .select(`
+                    id,
+                    period_id,
+                    user_id,
+                    month_key,
+                    target,
+                    updated_at
+                `)
+                .in(
+                    "period_id",
+                    periodIds
+                );
+
+        if (
+            monthTargetError
+        ) {
+            console.warn(
+                "Unable to load monthly weekend targets:",
+                monthTargetError
+            );
+        } else {
+
+            (
+                monthTargetRows || []
+            ).forEach(
+                row => {
+                    monthlyWeekendTargets[
+                        `${row.period_id}_${row.user_id}_${row.month_key}`
+                    ] =
+                        row;
+                }
+            );
+        }
+    }
+
     const periodsToLoad =
         [
             activeSchedulingPeriod,
@@ -2532,6 +2698,7 @@ async function loadWeek() {
                 period &&
                 array.findIndex(
                     item =>
+                        item &&
                         item.id === period.id
                 ) === index
         );
@@ -2619,6 +2786,418 @@ async function loadWeek() {
 /* =========================================================
    DISPLAY HELPERS
 ========================================================= */
+
+function getSelectedViewPeriod() {
+
+    if (
+        viewSchedulingPeriodId
+    ) {
+        const selected =
+            allSchedulingPeriods.find(
+                period =>
+                    period.id ===
+                    viewSchedulingPeriodId
+            );
+
+        if (
+            selected
+        ) {
+            return selected;
+        }
+    }
+
+    if (
+        activeSchedulingPeriod
+    ) {
+        return activeSchedulingPeriod;
+    }
+
+    return (
+        allSchedulingPeriods.find(
+            period =>
+                period.active
+        )
+        ||
+        allSchedulingPeriods[0]
+        ||
+        null
+    );
+}
+
+
+function getWeekStartDatesForPeriod(
+    period
+) {
+
+    if (!period) {
+        return [];
+    }
+
+    const weeks = [];
+
+    let cursor =
+        getSunday(
+            getDateFromKey(
+                period.period_start
+            )
+        );
+
+    const periodEnd =
+        getDateFromKey(
+            period.period_end
+        );
+
+    while (
+        cursor <= periodEnd
+    ) {
+
+        weeks.push(
+            new Date(cursor)
+        );
+
+        cursor =
+            new Date(cursor);
+
+        cursor.setDate(
+            cursor.getDate() + 7
+        );
+    }
+
+    return weeks;
+}
+
+
+function getWeekStartDatesForAssignedMonth(
+    period,
+    monthKey
+) {
+
+    return getWeekStartDatesForPeriod(
+        period
+    ).filter(
+        weekStart =>
+            getAssignedMonthKeyForWeekDate(
+                weekStart
+            ) ===
+            monthKey
+    );
+}
+
+
+function getMonthlyWeekendTargetForUser(
+    userId,
+    monthKey,
+    period =
+        activeSchedulingPeriod
+) {
+
+    if (
+        !period
+    ) {
+        return 3;
+    }
+
+    const saved =
+        monthlyWeekendTargets[
+            `${period.id}_${userId}_${monthKey}`
+        ];
+
+    if (
+        saved
+    ) {
+        return Number(
+            saved.target
+        );
+    }
+
+    return getWeekendTargetForUser(
+        userId,
+        period
+    );
+}
+
+
+function renderQuarterNavigator() {
+
+    const quarterSelect =
+        document.getElementById(
+            "viewQuarterSelect"
+        );
+
+    const monthSelect =
+        document.getElementById(
+            "viewMonthSelect"
+        );
+
+    const weekList =
+        document.getElementById(
+            "quarterWeekList"
+        );
+
+    if (
+        !quarterSelect ||
+        !monthSelect ||
+        !weekList
+    ) {
+        return;
+    }
+
+    quarterSelect.innerHTML =
+        "";
+
+    allSchedulingPeriods.forEach(
+        period => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                period.id;
+
+            option.textContent =
+                period.name;
+
+            quarterSelect.appendChild(
+                option
+            );
+        }
+    );
+
+    let selectedPeriod =
+        getSelectedViewPeriod();
+
+    if (
+        !selectedPeriod
+    ) {
+        quarterSelect.innerHTML =
+            `<option>No quarters created</option>`;
+
+        monthSelect.innerHTML =
+            `<option>No month</option>`;
+
+        weekList.innerHTML =
+            "";
+
+        return;
+    }
+
+    if (
+        !viewSchedulingPeriodId
+    ) {
+        viewSchedulingPeriodId =
+            selectedPeriod.id;
+    }
+
+    quarterSelect.value =
+        viewSchedulingPeriodId;
+
+    selectedPeriod =
+        getSelectedViewPeriod();
+
+    const monthKeys =
+        getPeriodMonthKeys(
+            selectedPeriod
+        );
+
+    const currentAssignedMonth =
+        getAssignedMonthKeyForWeekDate(
+            currentWeekStart
+        );
+
+    if (
+        !viewMonthKey ||
+        !monthKeys.includes(
+            viewMonthKey
+        )
+    ) {
+
+        viewMonthKey =
+            monthKeys.includes(
+                currentAssignedMonth
+            )
+                ? currentAssignedMonth
+                : monthKeys[0]
+                  || null;
+    }
+
+    monthSelect.innerHTML =
+        "";
+
+    monthKeys.forEach(
+        monthKey => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                monthKey;
+
+            option.textContent =
+                getWeekendMonthLabel(
+                    monthKey
+                );
+
+            monthSelect.appendChild(
+                option
+            );
+        }
+    );
+
+    if (
+        viewMonthKey
+    ) {
+        monthSelect.value =
+            viewMonthKey;
+    }
+
+    weekList.innerHTML =
+        "";
+
+    getWeekStartDatesForAssignedMonth(
+        selectedPeriod,
+        viewMonthKey
+    ).forEach(
+        weekStart => {
+
+            const weekEnd =
+                new Date(
+                    weekStart
+                );
+
+            weekEnd.setDate(
+                weekEnd.getDate() + 6
+            );
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+            button.type =
+                "button";
+
+            button.className =
+                "quarter-week-button";
+
+            if (
+                getDateKey(
+                    weekStart
+                ) ===
+                getDateKey(
+                    currentWeekStart
+                )
+            ) {
+                button.classList.add(
+                    "active"
+                );
+            }
+
+            button.textContent =
+                `${weekStart.getMonth() + 1}/${weekStart.getDate()}–${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
+
+            button.onclick =
+                async function() {
+
+                    currentWeekStart =
+                        getSunday(
+                            weekStart
+                        );
+
+                    await loadWeek();
+                };
+
+            weekList.appendChild(
+                button
+            );
+        }
+    );
+}
+
+
+async function changeViewQuarter() {
+
+    const select =
+        document.getElementById(
+            "viewQuarterSelect"
+        );
+
+    viewSchedulingPeriodId =
+        select.value || null;
+
+    const period =
+        getSelectedViewPeriod();
+
+    if (!period) {
+        return;
+    }
+
+    const monthKeys =
+        getPeriodMonthKeys(
+            period
+        );
+
+    viewMonthKey =
+        monthKeys[0]
+        || null;
+
+    const firstWeek =
+        getWeekStartDatesForAssignedMonth(
+            period,
+            viewMonthKey
+        )[0];
+
+    if (
+        firstWeek
+    ) {
+        currentWeekStart =
+            getSunday(
+                firstWeek
+            );
+
+        await loadWeek();
+    } else {
+        renderQuarterNavigator();
+    }
+}
+
+
+async function changeViewMonth() {
+
+    const select =
+        document.getElementById(
+            "viewMonthSelect"
+        );
+
+    viewMonthKey =
+        select.value || null;
+
+    const period =
+        getSelectedViewPeriod();
+
+    const firstWeek =
+        getWeekStartDatesForAssignedMonth(
+            period,
+            viewMonthKey
+        )[0];
+
+    if (
+        firstWeek
+    ) {
+        currentWeekStart =
+            getSunday(
+                firstWeek
+            );
+
+        await loadWeek();
+    } else {
+        renderQuarterNavigator();
+    }
+}
+
 
 function getProfileName(profile) {
 
@@ -2839,6 +3418,7 @@ function renderLoading() {
 function renderSchedule() {
 
     updateWeekTitle();
+    renderQuarterNavigator();
     renderWorkflowPanel();
 
     renderClinicHeader(
@@ -3010,6 +3590,21 @@ function renderClinicHeader(
 
     row.appendChild(total);
 
+    const weekendCounter =
+        document.createElement(
+            "th"
+        );
+
+    weekendCounter.className =
+        "weekend-counter-cell";
+
+    weekendCounter.innerHTML =
+        "Weekend<br>Month";
+
+    row.appendChild(
+        weekendCounter
+    );
+
     if (
         currentProfile.role ===
         "admin"
@@ -3071,8 +3666,8 @@ function renderClinicBody(
 
         emptyCell.colSpan =
             currentProfile.role === "admin"
-                ? 12
-                : 11;
+                ? 13
+                : 12;
         emptyCell.className =
             "empty-cell";
 
@@ -3401,6 +3996,62 @@ function createWeeklyEmployeeRow(
 
     row.appendChild(
         totalCell
+    );
+
+    const weekendCounterCell =
+        document.createElement(
+            "td"
+        );
+
+    weekendCounterCell.className =
+        "weekend-counter-cell";
+
+    if (
+        profile.clinic_site ===
+            "Turfland" &&
+        activeSchedulingPeriod
+    ) {
+
+        const monthKey =
+            getAssignedMonthKeyForWeekDate(
+                currentWeekStart
+            );
+
+        const weekendCount =
+            getWeekendDateCountForUser(
+                profile.id,
+                monthKey,
+                activeSchedulingPeriod
+            );
+
+        const weekendTarget =
+            getMonthlyWeekendTargetForUser(
+                profile.id,
+                monthKey,
+                activeSchedulingPeriod
+            );
+
+        weekendCounterCell.textContent =
+            `${weekendCount}/${weekendTarget}`;
+
+        weekendCounterCell.title =
+            `${getWeekendMonthLabel(monthKey)} weekend dates`;
+
+        weekendCounterCell.classList.add(
+            weekendCount >=
+                weekendTarget
+                ? "weekend-counter-good"
+                : "weekend-counter-low"
+        );
+
+    } else {
+
+        weekendCounterCell.textContent =
+            "—";
+    }
+
+    row.appendChild(
+        weekendCounterCell
     );
 
     if (
@@ -4304,6 +4955,15 @@ function createClinicCapacityRow(
     );
 
     /*
+     * Blank Weekend Month column.
+     */
+    row.appendChild(
+        document.createElement(
+            "td"
+        )
+    );
+
+    /*
      * Capacity row is admin-only, so include the
      * blank Submission Status column too.
      */
@@ -4491,6 +5151,15 @@ function createClinicAvailabilityRow(
         )
     );
 
+    row.appendChild(
+        document.createElement(
+            "td"
+        )
+    );
+
+    /*
+     * Blank Weekend Month column.
+     */
     row.appendChild(
         document.createElement(
             "td"
@@ -5542,6 +6211,96 @@ async function setWeekendTargetForUser(
 }
 
 
+async function setMonthlyWeekendTargetForUser(
+    userId,
+    monthKey,
+    target
+) {
+
+    if (
+        !adminSchedulingPeriod ||
+        !currentProfile ||
+        currentProfile.role !==
+            "admin"
+    ) {
+        return;
+    }
+
+    const numericTarget =
+        Number(
+            target
+        );
+
+    if (
+        !Number.isInteger(
+            numericTarget
+        ) ||
+        numericTarget < 0 ||
+        numericTarget > 10
+    ) {
+        showError(
+            "Weekend requirement must be between 0 and 10."
+        );
+
+        return;
+    }
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from(
+                "scheduling_month_weekend_targets"
+            )
+            .upsert(
+                {
+                    period_id:
+                        adminSchedulingPeriod.id,
+
+                    user_id:
+                        userId,
+
+                    month_key:
+                        monthKey,
+
+                    target:
+                        numericTarget,
+
+                    updated_at:
+                        new Date()
+                            .toISOString()
+                },
+                {
+                    onConflict:
+                        "period_id,user_id,month_key"
+                }
+            )
+            .select()
+            .single();
+
+    if (
+        error
+    ) {
+        showError(
+            "Monthly weekend requirement could not be saved: "
+            +
+            error.message
+        );
+
+        return;
+    }
+
+    monthlyWeekendTargets[
+        `${adminSchedulingPeriod.id}_${userId}_${monthKey}`
+    ] =
+        data;
+
+    renderPeopleList();
+    renderSchedule();
+}
+
+
 function renderWorkflowPanel() {
 
     const panel =
@@ -5625,9 +6384,6 @@ function renderWorkflowPanel() {
     const weekendMonthKeys =
         getPeriodMonthKeys();
 
-    const weekendTarget =
-        getWeekendTarget();
-
     const ownWeekendSummary =
         currentProfile.clinic_site ===
             "Turfland" &&
@@ -5640,7 +6396,15 @@ function renderWorkflowPanel() {
                                 currentUser.id,
                                 monthKey
                             );
-                        return `${getWeekendMonthLabel(monthKey)} ${count}/${weekendTarget}`;
+
+                        const target =
+                            getMonthlyWeekendTargetForUser(
+                                currentUser.id,
+                                monthKey,
+                                activeSchedulingPeriod
+                            );
+
+                        return `${getWeekendMonthLabel(monthKey)} ${count}/${target}`;
                     }
                 )
                 .join(" · ")
@@ -6947,20 +7711,6 @@ function renderPeopleList() {
                         adminSchedulingPeriod
                     );
 
-                const target =
-                    getWeekendTargetForUser(
-                        profile.id,
-                        adminSchedulingPeriod
-                    );
-
-                const weekendText =
-                    monthKeys
-                        .map(
-                            monthKey =>
-                                `${getWeekendMonthLabel(monthKey)} ${getWeekendDateCountForUser(profile.id, monthKey, adminSchedulingPeriod)}/${target}`
-                        )
-                        .join(" · ");
-
                 const weekendInfo =
                     document.createElement(
                         "div"
@@ -6971,89 +7721,126 @@ function renderPeopleList() {
                     grid-column: 1 / -1;
                     display:flex;
                     align-items:center;
-                    gap:10px;
+                    gap:12px;
                     flex-wrap:wrap;
                     font-size:12px;
                     color:#475569;
                     margin-top:-4px;
+                    padding-top:6px;
+                    border-top:1px solid #f1f5f9;
                     `;
 
-                const weekendSummary =
+                const title =
                     document.createElement(
-                        "span"
+                        "strong"
                     );
 
-                weekendSummary.textContent =
-                    `Weekend dates (${adminSchedulingPeriod.name}): ${weekendText}`;
+                title.textContent =
+                    "Weekend requirements:";
 
                 weekendInfo.appendChild(
-                    weekendSummary
+                    title
                 );
 
-                const targetLabel =
-                    document.createElement(
-                        "label"
-                    );
+                monthKeys.forEach(
+                    monthKey => {
 
-                targetLabel.textContent =
-                    "Required / month:";
+                        const count =
+                            getWeekendDateCountForUser(
+                                profile.id,
+                                monthKey,
+                                adminSchedulingPeriod
+                            );
 
-                targetLabel.style.fontWeight =
-                    "600";
+                        const target =
+                            getMonthlyWeekendTargetForUser(
+                                profile.id,
+                                monthKey,
+                                adminSchedulingPeriod
+                            );
 
-                weekendInfo.appendChild(
-                    targetLabel
-                );
+                        const monthWrap =
+                            document.createElement(
+                                "span"
+                            );
 
-                const targetSelect =
-                    document.createElement(
-                        "select"
-                    );
+                        monthWrap.style.cssText =
+                            `
+                            display:inline-flex;
+                            align-items:center;
+                            gap:5px;
+                            `;
 
-                targetSelect.style.cssText =
-                    `
-                    padding:4px 7px;
-                    border:1px solid #cbd5e1;
-                    border-radius:5px;
-                    background:white;
-                    `;
+                        const label =
+                            document.createElement(
+                                "span"
+                            );
 
-                for (
-                    let amount = 0;
-                    amount <= 10;
-                    amount++
-                ) {
-                    const option =
-                        document.createElement(
-                            "option"
+                        label.textContent =
+                            `${getWeekendMonthLabel(monthKey)} ${count}/`;
+
+                        const select =
+                            document.createElement(
+                                "select"
+                            );
+
+                        select.style.cssText =
+                            `
+                            padding:3px 6px;
+                            border:1px solid #cbd5e1;
+                            border-radius:5px;
+                            background:white;
+                            `;
+
+                        for (
+                            let amount = 0;
+                            amount <= 10;
+                            amount++
+                        ) {
+
+                            const option =
+                                document.createElement(
+                                    "option"
+                                );
+
+                            option.value =
+                                amount;
+
+                            option.textContent =
+                                amount;
+
+                            option.selected =
+                                amount === target;
+
+                            select.appendChild(
+                                option
+                            );
+                        }
+
+                        select.addEventListener(
+                            "change",
+                            function() {
+
+                                setMonthlyWeekendTargetForUser(
+                                    profile.id,
+                                    monthKey,
+                                    select.value
+                                );
+                            }
                         );
 
-                    option.value =
-                        amount;
+                        monthWrap.appendChild(
+                            label
+                        );
 
-                    option.textContent =
-                        amount;
+                        monthWrap.appendChild(
+                            select
+                        );
 
-                    option.selected =
-                        amount === target;
-
-                    targetSelect.appendChild(
-                        option
-                    );
-                }
-
-                targetSelect.addEventListener(
-                    "change",
-                    function() {
-                        setWeekendTargetForUser(
-                            profile.id,
-                            targetSelect.value
+                        weekendInfo.appendChild(
+                            monthWrap
                         );
                     }
-                );
-
-                weekendInfo.appendChild(
-                    targetSelect
                 );
 
                 row.appendChild(
