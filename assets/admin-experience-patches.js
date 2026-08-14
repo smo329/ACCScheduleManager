@@ -47,9 +47,7 @@
     }
 
     if (parts.addPerson) {
-      if (!peopleMode) {
-        parts.addPerson.style.display = "none";
-      }
+      if (!peopleMode) parts.addPerson.style.display = "none";
     }
 
     if (parts.peopleList) {
@@ -65,17 +63,9 @@
     }
 
     if (!peopleMode) {
-      if (typeof closeAddEmployeeSection === "function") {
-        closeAddEmployeeSection();
-      }
-
-      if (typeof renderAdminQuarterControls === "function") {
-        renderAdminQuarterControls();
-      }
-
-      if (typeof renderQuarterDashboard === "function") {
-        renderQuarterDashboard();
-      }
+      if (typeof closeAddEmployeeSection === "function") closeAddEmployeeSection();
+      if (typeof renderAdminQuarterControls === "function") renderAdminQuarterControls();
+      if (typeof renderQuarterDashboard === "function") renderQuarterDashboard();
     } else if (typeof renderPeopleList === "function") {
       renderPeopleList();
     }
@@ -83,14 +73,12 @@
 
   window.openPeopleManagement = function () {
     if (!isAdmin()) return;
-
     openAdmin();
     showAdminSection("people");
   };
 
   window.openQuarterDashboardPanel = function () {
     if (!isAdmin()) return;
-
     openAdmin();
     showAdminSection("quarter");
   };
@@ -108,7 +96,6 @@
       peopleButton.type = "button";
       peopleButton.textContent = "Manage People";
       peopleButton.onclick = window.openPeopleManagement;
-
       oldButton.insertAdjacentElement("afterend", peopleButton);
     }
 
@@ -119,9 +106,7 @@
       dashboardButton.type = "button";
       dashboardButton.textContent = "Quarter Dashboard";
       dashboardButton.onclick = window.openQuarterDashboardPanel;
-
-      document
-        .getElementById("managePeopleTopButton")
+      document.getElementById("managePeopleTopButton")
         .insertAdjacentElement("afterend", dashboardButton);
     }
   }
@@ -141,16 +126,13 @@
     const panel = document.querySelector(
       '#accountSettingsShell .account-settings-tab[data-tab="notifications"]'
     );
-
     if (!panel) return null;
 
     [...panel.children].forEach(child => {
       if (
         child.classList?.contains("account-settings-help") &&
         child.textContent.includes("loading")
-      ) {
-        child.remove();
-      }
+      ) child.remove();
     });
 
     let section = document.getElementById("adminDailyDigestSettings");
@@ -158,39 +140,22 @@
 
     section = document.createElement("div");
     section.id = "adminDailyDigestSettings";
-
     section.innerHTML = `
       <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">
-        <input
-          id="adminDailyDigestEnabled"
-          type="checkbox"
-          style="width:auto;margin-top:3px;"
-        >
-
+        <input id="adminDailyDigestEnabled" type="checkbox" style="width:auto;margin-top:3px;">
         <span>
           <strong>Email me a daily summary when schedules are updated</strong>
-
           <span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">
             One end-of-day email summarizes schedule, leave, and comment changes across both clinics.
           </span>
         </span>
       </label>
-
       <div class="form-group">
         <label for="adminDailyDigestEmail">Notification Email</label>
         <input id="adminDailyDigestEmail" type="email">
-
-        <div
-          id="adminDailyDigestHelp"
-          class="account-settings-help"
-        ></div>
+        <div id="adminDailyDigestHelp" class="account-settings-help"></div>
       </div>
-
-      <button
-        id="saveAdminDailyDigestButton"
-        class="modal-button save-button"
-        type="button"
-      >
+      <button id="saveAdminDailyDigestButton" class="modal-button save-button" type="button">
         Save Notification Settings
       </button>
     `;
@@ -199,11 +164,9 @@
 
     const enabled = section.querySelector("#adminDailyDigestEnabled");
     const email = section.querySelector("#adminDailyDigestEmail");
-
     enabled.addEventListener("change", () => {
       email.disabled = !enabled.checked;
     });
-
     section.querySelector("#saveAdminDailyDigestButton").onclick =
       saveAdminDigestPreferences;
 
@@ -217,7 +180,6 @@
     const enabled = section.querySelector("#adminDailyDigestEnabled");
     const email = section.querySelector("#adminDailyDigestEmail");
     const help = section.querySelector("#adminDailyDigestHelp");
-
     const loginEmail = currentUser.email || "";
 
     email.placeholder = loginEmail || "Your login email";
@@ -227,10 +189,7 @@
 
     const { data, error } = await supabaseClient
       .from("notification_preferences")
-      .select(`
-        manager_schedule_update_email_enabled,
-        manager_schedule_update_email
-      `)
+      .select(`manager_schedule_update_email_enabled,manager_schedule_update_email`)
       .eq("user_id", currentUser.id)
       .maybeSingle();
 
@@ -246,23 +205,16 @@
 
   async function saveAdminDigestPreferences() {
     if (!isAdmin() || !currentUser) return;
-
-    if (typeof clearAccountMessages === "function") {
-      clearAccountMessages();
-    }
+    if (typeof clearAccountMessages === "function") clearAccountMessages();
 
     const enabled = document.getElementById("adminDailyDigestEnabled");
     const email = document.getElementById("adminDailyDigestEmail");
     const button = document.getElementById("saveAdminDailyDigestButton");
-
     if (!enabled || !email || !button) return;
 
     const alternateEmail = email.value.trim();
 
-    if (
-      alternateEmail &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alternateEmail)
-    ) {
+    if (alternateEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alternateEmail)) {
       if (typeof showAccountError === "function") {
         showAccountError(
           "Enter a valid notification email or leave it blank to use your login email."
@@ -282,17 +234,11 @@
           manager_schedule_update_email_enabled: enabled.checked,
           manager_schedule_update_email: alternateEmail || null,
           updated_at: new Date().toISOString()
-        }, {
-          onConflict: "user_id"
-        });
+        }, { onConflict: "user_id" });
 
       if (error) throw new Error(error.message);
 
-      const destination =
-        alternateEmail ||
-        currentUser.email ||
-        "your login email";
-
+      const destination = alternateEmail || currentUser.email || "your login email";
       if (typeof showAccountMessage === "function") {
         showAccountMessage(
           enabled.checked
@@ -302,7 +248,6 @@
       }
     } catch (error) {
       console.error(error);
-
       if (typeof showAccountError === "function") {
         showAccountError(
           "Unable to save notification settings: " +
@@ -317,37 +262,40 @@
 
   if (typeof updateUserHeader === "function") {
     const originalUpdateUserHeader = updateUserHeader;
-
     updateUserHeader = function (...args) {
       const result = originalUpdateUserHeader.apply(this, args);
-
-      if (isAdmin()) {
-        installAdminTopButtons();
-      }
-
+      if (isAdmin()) installAdminTopButtons();
       return result;
     };
   }
 
   if (typeof openAccountManager === "function") {
     const originalOpenAccountManager = openAccountManager;
-
     openAccountManager = function (...args) {
       const result = originalOpenAccountManager.apply(this, args);
-
       if (isAdmin()) {
         setTimeout(() => {
           ensureAdminDigestUi();
-
           loadAdminDigestPreferences().catch(error =>
             console.warn("Admin daily digest settings load failed:", error)
           );
         }, 0);
       }
-
       return result;
     };
   }
 
   installAdminTopButtons();
+})();
+
+/* Load employment-history behavior without requiring another index.html edit. */
+(function () {
+  if (document.querySelector('script[src="assets/employment-history-patches.js"]')) {
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.src = "assets/employment-history-patches.js";
+  script.defer = false;
+  document.body.appendChild(script);
 })();
