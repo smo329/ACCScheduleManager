@@ -133,7 +133,7 @@
       body.appendChild(
         createClinicAvailabilityRow(
           clinicSite,
-          clinicProfiles.filter(profile => profile.active === true)
+          clinicProfiles
         )
       );
     };
