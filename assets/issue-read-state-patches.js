@@ -70,3 +70,13 @@
   async function sync(){if(!isAdmin())return;const s=summary();if(!s?.period_id)return;await loadAck(s.period_id!==loadedPeriodId);adjustNotificationUi()}
   setTimeout(sync,1500);setTimeout(sync,3000);setInterval(sync,60000);
 })();
+
+/* Premium visual theme loader. Kept separate from scheduling logic so the makeover is easy to revise. */
+(function(){
+  if(document.getElementById('accPremiumTheme')) return;
+  const link=document.createElement('link');
+  link.id='accPremiumTheme';
+  link.rel='stylesheet';
+  link.href='assets/premium-theme.css?v=20260814-1';
+  document.head.appendChild(link);
+})();
