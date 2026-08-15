@@ -9,6 +9,17 @@
 
     <link rel="stylesheet" href="assets/styles.css">
     <link rel="stylesheet" href="assets/mobile-week-scroll.css?v=20260814-1">
+    <style>
+        /* Legacy standalone admin controls are replaced by the compact Admin menu.
+           Hide them before first paint so they never flash during login/render. */
+        #adminButton,
+        #managePeopleTopButton,
+        #quarterDashboardTopButton,
+        #scheduleHistoryTopButton,
+        #archiveCenterTopButton {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body>
