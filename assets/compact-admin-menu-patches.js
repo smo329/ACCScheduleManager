@@ -1,11 +1,16 @@
 /* ACC Schedule Manager - compact admin menu */
 (function(){
   "use strict";
-  const VERSION="2026.08.14.2";
+  const VERSION="2026.08.14.3";
   console.info(`[ACC Schedule Manager] compact admin menu loaded: ${VERSION}`);
 
   function isAdmin(){
-    return Boolean(window.currentProfile && currentProfile.role==="admin" && currentProfile.active!==false);
+    return Boolean(
+      typeof currentProfile !== "undefined" &&
+      currentProfile &&
+      currentProfile.role === "admin" &&
+      currentProfile.active !== false
+    );
   }
 
   const ADMIN_ONLY_IDS=[
@@ -58,7 +63,6 @@
       if(el) el.style.setProperty("display","none","important");
     });
 
-    /* Catch legacy copies that older patches may create without reliable IDs. */
     document.querySelectorAll(".topbar-user button").forEach(button=>{
       const label=button.textContent.trim().toLowerCase();
       if(label==="manage people" || label==="quarter dashboard" || label==="history" || label==="archive" || label==="admin"){
