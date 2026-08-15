@@ -1,14 +1,14 @@
 /* ACC Schedule Manager — clinic-specific Calendar & Print */
 (function(){
 'use strict';
-const VERSION='2026.08.14.1';
+const VERSION='2026.08.14.2';
 const CLINICS=['Turfland','Fountain Court'];
 let mode='month';
 let cache={schedules:[],opps:[],claims:[]};
 console.info(`[ACC Schedule Manager] calendar/print loaded: ${VERSION}`);
 
 const role=()=>{try{return currentProfile?.role||''}catch(_){return''}};
-const allowed=()=>role()==='admin'||role()==='manager';
+const allowed=()=>Boolean(currentProfile&&currentUser);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 function localDate(key){const [y,m,d]=String(key).slice(0,10).split('-').map(Number);return new Date(y,m-1,d)}
 function key(date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
@@ -44,7 +44,7 @@ function renderWeek(box,clinic,range){let rows='';for(let d=new Date(range.start
 function shiftMonth(delta){const input=document.getElementById('calDate');if(!input?.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(y,m-1+delta,1);input.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;loadAndRender()}
 function shiftWeek(delta){const input=document.getElementById('calDate');if(!input?.value)return;const d=localDate(input.value);d.setDate(d.getDate()+delta);input.value=key(d);loadAndRender()}
 
-function installNav(){if(!allowed())return;const side=document.getElementById('accSidebar');if(!side)return;if(document.getElementById('navCalendarPrint'))return;const labels=[...side.querySelectorAll('.acc-sidebar-label')];const wanted=labels.find(x=>x.textContent.trim()===(role()==='admin'?'Admin':'Management'));const section=wanted?.parentElement;if(!section)return;const b=document.createElement('button');b.id='navCalendarPrint';b.type='button';b.className='acc-nav-item';b.innerHTML='<span class="acc-nav-icon">▤</span><span class="acc-nav-text">Calendar & Print</span>';b.onclick=()=>{document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show');window.openCalendarPrint?.()};section.appendChild(b)}
+function installNav(){if(!allowed())return;const side=document.getElementById('accSidebar');if(!side)return;if(document.getElementById('navCalendarPrint'))return;const labels=[...side.querySelectorAll('.acc-sidebar-label')];const preferred=role()==='admin'?'Admin':role()==='manager'?'Management':'Scheduling';const wanted=labels.find(x=>x.textContent.trim()===preferred)||labels.find(x=>x.textContent.trim()==='Scheduling');const section=wanted?.parentElement;if(!section)return;const b=document.createElement('button');b.id='navCalendarPrint';b.type='button';b.className='acc-nav-item';b.innerHTML='<span class="acc-nav-icon">▤</span><span class="acc-nav-text">Calendar & Print</span>';b.onclick=()=>{document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show');window.openCalendarPrint?.()};section.appendChild(b)}
 window.openCalendarPrint=async function(){if(!allowed())return;ensureStyles();const m=ensureModal();populatePeriods();configureDateInput();setDefaultDate();m.classList.add('show');await loadAndRender()};
 ensureStyles();ensureModal();[300,900,1800,3200].forEach(ms=>setTimeout(installNav,ms));
 if(typeof window.refreshPremiumLayout==='function'){const old=window.refreshPremiumLayout;window.refreshPremiumLayout=function(...args){const r=old.apply(this,args);setTimeout(installNav,0);return r}}
