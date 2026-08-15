@@ -1,12 +1,10 @@
 /* ACC Schedule Manager - My Schedule + Additional Shifts terminology */
 (function(){
   "use strict";
-  const VERSION="2026.08.14.1";
+  const VERSION="2026.08.14.2";
   console.info(`[ACC Schedule Manager] my schedule patch loaded: ${VERSION}`);
 
-  function role(){
-    try { return currentProfile?.role || ""; } catch (_) { return ""; }
-  }
+  function role(){ try { return currentProfile?.role || ""; } catch (_) { return ""; } }
   function eligible(){ return role()==="employee" || role()==="external"; }
   function isExternal(){ return role()==="external"; }
   function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -14,15 +12,8 @@
   function fmtDate(key){if(!key)return "—";return new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"}).format(localDate(key));}
   function fmtHour(hour){const h=Number(hour);if(!Number.isFinite(h))return "—";if(h===0||h===24)return "12 AM";if(h===12)return "12 PM";return h<12?`${h} AM`:`${h-12} PM`;}
   function codeHours(code){if(code==="12")return 12;if(code==="A4")return 4;return 0;}
-  function periodRows(){
-    try { if(Array.isArray(allSchedulingPeriods)) return allSchedulingPeriods; } catch(_){}
-    return [];
-  }
-  function defaultPeriodId(){
-    try { if(viewSchedulingPeriodId) return viewSchedulingPeriodId; } catch(_){}
-    try { if(activeSchedulingPeriod?.id) return activeSchedulingPeriod.id; } catch(_){}
-    return periodRows()[0]?.id || "";
-  }
+  function periodRows(){ try { if(Array.isArray(allSchedulingPeriods)) return allSchedulingPeriods; } catch(_){} return []; }
+  function defaultPeriodId(){ try { if(viewSchedulingPeriodId) return viewSchedulingPeriodId; } catch(_){} try { if(activeSchedulingPeriod?.id) return activeSchedulingPeriod.id; } catch(_){} return periodRows()[0]?.id || ""; }
 
   function installStyles(){
     if(document.getElementById("myScheduleStyles"))return;
@@ -42,119 +33,35 @@
       .my-leave-row{font-size:11px;color:#7c2d12;background:#fff7ed;border-radius:6px;padding:6px 8px;margin-top:7px}
       .my-extra-card{border:1px solid #99f6e4;background:#f0fdfa;border-radius:9px;padding:12px;margin-bottom:8px}
       .my-extra-time{font-weight:800;color:#115e59}.my-extra-meta{font-size:12px;color:#475569;margin-top:3px}
-      .my-schedule-empty{padding:24px;text-align:center;color:#64748b}
-      .my-schedule-error{display:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:10px;margin-bottom:12px}
-      @media(max-width:760px){
-        .my-schedule-toolbar{grid-template-columns:1fr}.my-schedule-toolbar .modal-button{width:100%}
-        .my-schedule-tabs{display:grid;grid-template-columns:1fr 1fr}.my-schedule-tab{width:100%}
-        .my-schedule-tabs.one-tab{grid-template-columns:1fr}
-        .my-schedule-summary{grid-template-columns:1fr 1fr}.my-schedule-summary .my-summary-card:last-child{grid-column:1/-1}
-        #myScheduleModal .modal{width:100%;max-width:none;height:100%;max-height:none;border-radius:0}
-      }
+      .my-schedule-empty{padding:24px;text-align:center;color:#64748b}.my-schedule-error{display:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:10px;margin-bottom:12px}
+      @media(max-width:760px){.my-schedule-toolbar{grid-template-columns:1fr}.my-schedule-toolbar .modal-button{width:100%}.my-schedule-tabs{display:grid;grid-template-columns:1fr 1fr}.my-schedule-tab{width:100%}.my-schedule-tabs.one-tab{grid-template-columns:1fr}.my-schedule-summary{grid-template-columns:1fr 1fr}.my-schedule-summary .my-summary-card:last-child{grid-column:1/-1}#myScheduleModal .modal{width:100%;max-width:none;height:100%;max-height:none;border-radius:0}}
     `;document.head.appendChild(s);
   }
 
   function ensureModal(){
     let modal=document.getElementById("myScheduleModal");if(modal)return modal;
-    modal=document.createElement("div");modal.id="myScheduleModal";modal.className="modal-overlay";modal.innerHTML=`
-      <div class="modal modal-wide">
-        <div class="modal-header"><div class="modal-title" id="myScheduleTitle">My Schedule</div><button class="modal-close" id="myScheduleCloseX" type="button">×</button></div>
-        <div class="modal-body modal-scroll">
-          <div id="myScheduleError" class="my-schedule-error"></div>
-          <div class="my-schedule-toolbar"><div class="form-group" style="margin:0"><label for="mySchedulePeriod">Quarter</label><select id="mySchedulePeriod"></select></div><button id="myScheduleRefresh" class="modal-button cancel-button" type="button">Refresh</button></div>
-          <div id="myScheduleTabs" class="my-schedule-tabs"></div><div id="myScheduleContent"></div>
-        </div>
-        <div class="modal-footer"><button id="myScheduleClose" class="modal-button cancel-button" type="button">Close</button></div>
-      </div>`;
-    document.body.appendChild(modal);
-    const close=()=>modal.classList.remove("show");
-    modal.querySelector("#myScheduleCloseX").onclick=close;modal.querySelector("#myScheduleClose").onclick=close;
-    modal.querySelector("#myScheduleRefresh").onclick=renderCurrent;
-    modal.querySelector("#mySchedulePeriod").onchange=renderCurrent;
-    return modal;
+    modal=document.createElement("div");modal.id="myScheduleModal";modal.className="modal-overlay";modal.innerHTML=`<div class="modal modal-wide"><div class="modal-header"><div class="modal-title" id="myScheduleTitle">My Schedule</div><button class="modal-close" id="myScheduleCloseX" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myScheduleError" class="my-schedule-error"></div><div class="my-schedule-toolbar"><div class="form-group" style="margin:0"><label for="mySchedulePeriod">Quarter</label><select id="mySchedulePeriod"></select></div><button id="myScheduleRefresh" class="modal-button cancel-button" type="button">Refresh</button></div><div id="myScheduleTabs" class="my-schedule-tabs"></div><div id="myScheduleContent"></div></div><div class="modal-footer"><button id="myScheduleClose" class="modal-button cancel-button" type="button">Close</button></div></div>`;
+    document.body.appendChild(modal);const close=()=>modal.classList.remove("show");modal.querySelector("#myScheduleCloseX").onclick=close;modal.querySelector("#myScheduleClose").onclick=close;modal.querySelector("#myScheduleRefresh").onclick=renderCurrent;modal.querySelector("#mySchedulePeriod").onchange=renderCurrent;return modal;
   }
 
   let tab="schedule";
-  function populatePeriods(){
-    const sel=document.getElementById("mySchedulePeriod");if(!sel)return;
-    const prior=sel.value||defaultPeriodId();sel.innerHTML="";
-    periodRows().slice().sort((a,b)=>String(a.period_start).localeCompare(String(b.period_start))).forEach(p=>{const o=new Option(`${p.name} (${p.period_start} – ${p.period_end})`,p.id);if(p.id===prior)o.selected=true;sel.add(o);});
-  }
-  function renderTabs(){
-    const box=document.getElementById("myScheduleTabs");if(!box)return;
-    const items=isExternal()?[{id:"additional",label:"My Additional Shifts"}]:[{id:"schedule",label:"My Schedule"},{id:"additional",label:"My Additional Shifts"}];
-    if(!items.some(x=>x.id===tab))tab=items[0].id;
-    box.classList.toggle("one-tab",items.length===1);
-    box.innerHTML=items.map(x=>`<button class="my-schedule-tab ${tab===x.id?"active":""}" data-tab="${x.id}" type="button">${x.label}</button>`).join("");
-    box.querySelectorAll("button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderTabs();renderCurrent();});
-  }
+  function populatePeriods(){const sel=document.getElementById("mySchedulePeriod");if(!sel)return;const prior=sel.value||defaultPeriodId();sel.innerHTML="";periodRows().slice().sort((a,b)=>String(a.period_start).localeCompare(String(b.period_start))).forEach(p=>{const o=new Option(`${p.name} (${p.period_start} – ${p.period_end})`,p.id);if(p.id===prior)o.selected=true;sel.add(o);});}
+  function renderTabs(){const box=document.getElementById("myScheduleTabs");if(!box)return;const items=isExternal()?[{id:"additional",label:"My Additional Shifts"}]:[{id:"schedule",label:"My Schedule"},{id:"additional",label:"My Additional Shifts"}];if(!items.some(x=>x.id===tab))tab=items[0].id;box.classList.toggle("one-tab",items.length===1);box.innerHTML=items.map(x=>`<button class="my-schedule-tab ${tab===x.id?"active":""}" data-tab="${x.id}" type="button">${x.label}</button>`).join("");box.querySelectorAll("button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderTabs();renderCurrent();});}
   function setError(msg){const e=document.getElementById("myScheduleError");if(!e)return;e.textContent=msg||"";e.style.display=msg?"block":"none";}
   function selectedPeriod(){const id=document.getElementById("mySchedulePeriod")?.value;return periodRows().find(p=>p.id===id);}
 
-  async function renderSchedule(){
-    const box=document.getElementById("myScheduleContent"),period=selectedPeriod();if(!box||!period)return;
-    box.innerHTML='<div class="my-schedule-empty">Loading your schedule…</div>';
-    const uid=currentUser.id;
-    const [sRes,lRes]=await Promise.all([
-      supabaseClient.from("schedules").select("schedule_date,schedule_code,work_site").eq("user_id",uid).gte("schedule_date",period.period_start).lte("schedule_date",period.period_end).order("schedule_date"),
-      supabaseClient.from("schedule_leave_hours").select("leave_date,vacation_hours,professional_leave_hours,tdl_hours").eq("user_id",uid).gte("leave_date",period.period_start).lte("leave_date",period.period_end).order("leave_date")
-    ]);
-    if(sRes.error)throw sRes.error;if(lRes.error)throw lRes.error;
-    const schedules=sRes.data||[],leave=lRes.data||[],leaveMap=new Map(leave.map(x=>[x.leave_date,x]));
-    const totalWork=schedules.reduce((n,x)=>n+codeHours(x.schedule_code),0);
-    const totalLeave=leave.reduce((n,x)=>n+Number(x.vacation_hours||0)+Number(x.professional_leave_hours||0)+Number(x.tdl_hours||0),0);
-    const workedDays=schedules.filter(x=>codeHours(x.schedule_code)>0).length;
-    let html=`<div class="my-schedule-summary"><div class="my-summary-card"><strong>${totalWork}</strong><span>Scheduled work hours</span></div><div class="my-summary-card"><strong>${totalLeave}</strong><span>Leave hours</span></div><div class="my-summary-card"><strong>${workedDays}</strong><span>Scheduled work days</span></div></div>`;
-    if(!schedules.length&&!leave.length){box.innerHTML=html+'<div class="my-schedule-empty">No schedule entries are recorded for this quarter.</div>';return;}
-    const dates=[...new Set([...schedules.map(x=>x.schedule_date),...leave.map(x=>x.leave_date)])].sort();
-    html+=dates.map(date=>{
-      const s=schedules.find(x=>x.schedule_date===date),l=leaveMap.get(date);const code=s?.schedule_code||"0";
-      const parts=[];if(Number(l?.vacation_hours||0)>0)parts.push(`${l.vacation_hours}h Vacation`);if(Number(l?.professional_leave_hours||0)>0)parts.push(`${l.professional_leave_hours}h PL`);if(Number(l?.tdl_hours||0)>0)parts.push(`${l.tdl_hours}h TDL`);
-      return `<div class="my-date-card"><div class="my-date-head"><div><div class="my-date-title">${esc(fmtDate(date))}</div><div class="my-date-site">${esc(s?.work_site||currentProfile?.clinic_site||"")}</div></div><span class="my-code-badge">${esc(code)}</span></div>${parts.length?`<div class="my-leave-row">${esc(parts.join(" · "))}</div>`:""}</div>`;
-    }).join("");box.innerHTML=html;
-  }
+  async function renderSchedule(){const box=document.getElementById("myScheduleContent"),period=selectedPeriod();if(!box||!period)return;box.innerHTML='<div class="my-schedule-empty">Loading your schedule…</div>';const uid=currentUser.id;const [sRes,lRes]=await Promise.all([supabaseClient.from("schedules").select("schedule_date,schedule_code,work_site").eq("user_id",uid).gte("schedule_date",period.period_start).lte("schedule_date",period.period_end).order("schedule_date"),supabaseClient.from("schedule_leave_hours").select("leave_date,vacation_hours,professional_leave_hours,tdl_hours").eq("user_id",uid).gte("leave_date",period.period_start).lte("leave_date",period.period_end).order("leave_date")]);if(sRes.error)throw sRes.error;if(lRes.error)throw lRes.error;const schedules=sRes.data||[],leave=lRes.data||[],leaveMap=new Map(leave.map(x=>[x.leave_date,x]));const totalWork=schedules.reduce((n,x)=>n+codeHours(x.schedule_code),0);const totalLeave=leave.reduce((n,x)=>n+Number(x.vacation_hours||0)+Number(x.professional_leave_hours||0)+Number(x.tdl_hours||0),0);const workedDays=schedules.filter(x=>codeHours(x.schedule_code)>0).length;let html=`<div class="my-schedule-summary"><div class="my-summary-card"><strong>${totalWork}</strong><span>Scheduled work hours</span></div><div class="my-summary-card"><strong>${totalLeave}</strong><span>Leave hours</span></div><div class="my-summary-card"><strong>${workedDays}</strong><span>Scheduled work days</span></div></div>`;if(!schedules.length&&!leave.length){box.innerHTML=html+'<div class="my-schedule-empty">No schedule entries are recorded for this quarter.</div>';return;}const dates=[...new Set([...schedules.map(x=>x.schedule_date),...leave.map(x=>x.leave_date)])].sort();html+=dates.map(date=>{const s=schedules.find(x=>x.schedule_date===date),l=leaveMap.get(date);const code=s?.schedule_code||"0";const parts=[];if(Number(l?.vacation_hours||0)>0)parts.push(`${l.vacation_hours}h Vacation`);if(Number(l?.professional_leave_hours||0)>0)parts.push(`${l.professional_leave_hours}h PL`);if(Number(l?.tdl_hours||0)>0)parts.push(`${l.tdl_hours}h TDL`);return `<div class="my-date-card"><div class="my-date-head"><div><div class="my-date-title">${esc(fmtDate(date))}</div><div class="my-date-site">${esc(s?.work_site||currentProfile?.clinic_site||"")}</div></div><span class="my-code-badge">${esc(code)}</span></div>${parts.length?`<div class="my-leave-row">${esc(parts.join(" · "))}</div>`:""}</div>`;}).join("");box.innerHTML=html;}
 
-  async function renderAdditional(){
-    const box=document.getElementById("myScheduleContent"),period=selectedPeriod();if(!box||!period)return;
-    box.innerHTML='<div class="my-schedule-empty">Loading your Additional Shifts…</div>';
-    const {data:claims,error:cErr}=await supabaseClient.from("open_shift_claims").select("id,opportunity_id,start_hour,end_hour,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:true});
-    if(cErr)throw cErr;const rows=claims||[];if(!rows.length){box.innerHTML='<div class="my-schedule-empty">You have not signed up for any Additional Shifts.</div>';return;}
-    const ids=[...new Set(rows.map(x=>x.opportunity_id))];
-    const {data:opps,error:oErr}=await supabaseClient.from("open_shift_opportunities").select("id,period_id,shift_date,clinic_site,status,start_hour,end_hour").in("id",ids).eq("period_id",period.id).order("shift_date",{ascending:true});
-    if(oErr)throw oErr;const map=new Map((opps||[]).map(x=>[x.id,x]));
-    const joined=rows.map(c=>({c,o:map.get(c.opportunity_id)})).filter(x=>x.o).sort((a,b)=>String(a.o.shift_date).localeCompare(String(b.o.shift_date))||a.c.start_hour-b.c.start_hour);
-    if(!joined.length){box.innerHTML='<div class="my-schedule-empty">You have no Additional Shifts in this quarter.</div>';return;}
-    const hours=joined.reduce((n,x)=>n+(x.c.end_hour-x.c.start_hour),0);
-    box.innerHTML=`<div class="my-schedule-summary"><div class="my-summary-card"><strong>${joined.length}</strong><span>Additional shift signups</span></div><div class="my-summary-card"><strong>${hours}</strong><span>Additional hours</span></div><div class="my-summary-card"><strong>${new Set(joined.map(x=>x.o.shift_date)).size}</strong><span>Dates</span></div></div>`+joined.map(({c,o})=>`<div class="my-extra-card"><div class="my-date-title">${esc(fmtDate(o.shift_date))}</div><div class="my-extra-time">${fmtHour(c.start_hour)}–${fmtHour(c.end_hour)} · ${c.end_hour-c.start_hour} hours</div><div class="my-extra-meta">${esc(o.clinic_site)}${o.status==="closed"?" · Shift closed":""}</div></div>`).join("");
-  }
+  async function renderAdditional(){const box=document.getElementById("myScheduleContent"),period=selectedPeriod();if(!box||!period)return;box.innerHTML='<div class="my-schedule-empty">Loading your Additional Shifts…</div>';const {data:claims,error:cErr}=await supabaseClient.from("open_shift_claims").select("id,opportunity_id,start_hour,end_hour,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:true});if(cErr)throw cErr;const rows=claims||[];if(!rows.length){box.innerHTML='<div class="my-schedule-empty">You have not signed up for any Additional Shifts.</div>';return;}const ids=[...new Set(rows.map(x=>x.opportunity_id))];const {data:opps,error:oErr}=await supabaseClient.from("open_shift_opportunities").select("id,period_id,shift_date,clinic_site,status,start_hour,end_hour").in("id",ids).eq("period_id",period.id).order("shift_date",{ascending:true});if(oErr)throw oErr;const map=new Map((opps||[]).map(x=>[x.id,x]));const joined=rows.map(c=>({c,o:map.get(c.opportunity_id)})).filter(x=>x.o).sort((a,b)=>String(a.o.shift_date).localeCompare(String(b.o.shift_date))||a.c.start_hour-b.c.start_hour);if(!joined.length){box.innerHTML='<div class="my-schedule-empty">You have no Additional Shifts in this quarter.</div>';return;}const hours=joined.reduce((n,x)=>n+(x.c.end_hour-x.c.start_hour),0);box.innerHTML=`<div class="my-schedule-summary"><div class="my-summary-card"><strong>${joined.length}</strong><span>Additional shift signups</span></div><div class="my-summary-card"><strong>${hours}</strong><span>Additional hours</span></div><div class="my-summary-card"><strong>${new Set(joined.map(x=>x.o.shift_date)).size}</strong><span>Dates</span></div></div>`+joined.map(({c,o})=>`<div class="my-extra-card"><div class="my-date-title">${esc(fmtDate(o.shift_date))}</div><div class="my-extra-time">${fmtHour(c.start_hour)}–${fmtHour(c.end_hour)} · ${c.end_hour-c.start_hour} hours</div><div class="my-extra-meta">${esc(o.clinic_site)}${o.status==="closed"?" · Shift closed":""}</div></div>`).join("");}
 
-  async function renderCurrent(){
-    if(!eligible())return;setError("");
-    try{if(tab==="additional")await renderAdditional();else await renderSchedule();}catch(e){console.error(e);setError(e.message||"Unable to load your schedule.");document.getElementById("myScheduleContent").innerHTML="";}
-  }
+  async function renderCurrent(){if(!eligible())return;setError("");try{if(tab==="additional")await renderAdditional();else await renderSchedule();}catch(e){console.error(e);setError(e.message||"Unable to load your schedule.");const box=document.getElementById("myScheduleContent");if(box)box.innerHTML="";}}
+  window.openMySchedule=function(){if(!eligible())return;installStyles();const modal=ensureModal();populatePeriods();tab=isExternal()?"additional":"schedule";renderTabs();document.getElementById("myScheduleTitle").textContent=isExternal()?"My Additional Shifts":"My Schedule";modal.classList.add("show");renderCurrent();};
 
-  window.openMySchedule=function(){
-    if(!eligible())return;installStyles();const modal=ensureModal();populatePeriods();tab=isExternal()?"additional":"schedule";renderTabs();document.getElementById("myScheduleTitle").textContent=isExternal()?"My Additional Shifts":"My Schedule";modal.classList.add("show");renderCurrent();
-  };
-
-  function ensureTopButton(){
-    const topbar=document.querySelector(".topbar-user");if(!topbar)return;
-    let btn=document.getElementById("myScheduleTopButton");
-    if(!eligible()){btn?.remove();return;}
-    if(!btn){btn=document.createElement("button");btn.id="myScheduleTopButton";btn.className="topbar-button";btn.type="button";const acct=[...topbar.querySelectorAll("button")].find(b=>b.textContent.trim()==="Account");if(acct)acct.insertAdjacentElement("beforebegin",btn);else topbar.appendChild(btn);btn.onclick=window.openMySchedule;}
-    btn.textContent=isExternal()?"My Additional Shifts":"My Schedule";
-  }
-
-  function renameAdditionalShifts(root=document){
-    const ids=["openShiftsTopButton"];
-    ids.forEach(id=>{const el=document.getElementById(id);if(el&&el.textContent.trim()==="Open Shifts")el.textContent="Additional Shifts";});
-    const modal=document.getElementById("openShiftsModal");if(modal){const title=modal.querySelector(".modal-title");if(title&&title.textContent.includes("Open Shifts"))title.textContent=title.textContent.replaceAll("Open Shifts","Additional Shifts");modal.querySelectorAll(".open-shift-site").forEach(el=>{if(el.textContent.includes("Open Shift"))el.textContent=el.textContent.replaceAll("Open Shift","Additional Shift");});}
-    document.querySelectorAll("#compactAdminMenu .compact-admin-item").forEach(b=>{const span=b.querySelector("span:last-child");if(span&&span.textContent.trim()==="Open Shifts")span.textContent="Additional Shifts";});
-  }
+  function ensureTopButton(){const topbar=document.querySelector(".topbar-user");if(!topbar)return;let btn=document.getElementById("myScheduleTopButton");if(!eligible()){btn?.remove();return;}if(!btn){btn=document.createElement("button");btn.id="myScheduleTopButton";btn.className="topbar-button";btn.type="button";const acct=[...topbar.querySelectorAll("button")].find(b=>b.textContent.trim()==="Account");if(acct)acct.insertAdjacentElement("beforebegin",btn);else topbar.appendChild(btn);btn.onclick=window.openMySchedule;}btn.textContent=isExternal()?"My Additional Shifts":"My Schedule";}
+  function renameAdditionalShifts(){const el=document.getElementById("openShiftsTopButton");if(el&&el.textContent.trim()==="Open Shifts")el.textContent="Additional Shifts";const modal=document.getElementById("openShiftsModal");if(modal){const title=modal.querySelector(".modal-title");if(title&&title.textContent.includes("Open Shifts"))title.textContent=title.textContent.replaceAll("Open Shifts","Additional Shifts");}document.querySelectorAll("#compactAdminMenu .compact-admin-item").forEach(b=>{const span=b.querySelector("span:last-child");if(span&&span.textContent.trim()==="Open Shifts")span.textContent="Additional Shifts";});}
+  function refreshUi(){ensureTopButton();renameAdditionalShifts();}
 
   installStyles();ensureModal();
-  setTimeout(()=>{ensureTopButton();renameAdditionalShifts();},0);setTimeout(()=>{ensureTopButton();renameAdditionalShifts();},500);setTimeout(()=>{ensureTopButton();renameAdditionalShifts();},1500);
-  const obs=new MutationObserver(()=>{ensureTopButton();renameAdditionalShifts();});
-  const topbar=document.querySelector(".topbar-user");if(topbar)obs.observe(topbar,{childList:true,subtree:true});
-  const bodyObs=new MutationObserver(()=>renameAdditionalShifts());bodyObs.observe(document.body,{childList:true,subtree:true});
+  [0,250,750,1500,3000].forEach(ms=>setTimeout(refreshUi,ms));
+  if(typeof updateUserHeader==="function"){const original=updateUserHeader;updateUserHeader=function(...args){const r=original.apply(this,args);setTimeout(refreshUi,0);return r;};}
 })();
