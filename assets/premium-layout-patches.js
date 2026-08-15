@@ -1,20 +1,19 @@
 /* ACC Schedule Manager - premium app shell */
 (function(){
 'use strict';
-const VERSION='2026.08.14.1';
+const VERSION='2026.08.14.2';
 console.info(`[ACC Schedule Manager] premium layout loaded: ${VERSION}`);
 function role(){try{return currentProfile?.role||null}catch(_){return null}}
 function isAdmin(){return role()==='admin'}
 function isManager(){return role()==='manager'}
 function isEmployee(){return role()==='employee'}
 function isExternal(){return role()==='external'}
-function userName(){try{return getProfileName(currentProfile)||'User'}catch(_){return 'User'}}
 function closeSidebar(){document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show')}
 function openSidebar(){document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
 function invoke(fn){closeSidebar();try{fn?.()}catch(e){console.warn(e)}}
 function actions(){
  const common=[
-  {section:'Scheduling',id:'navSchedule',icon:'▦',label:'Schedule',run:()=>window.scrollTo({top:0,behavior:'smooth'})},
+  {section:'Scheduling',id:'navSchedule',icon:'▦',label:'Schedule',run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
   {section:'Scheduling',id:'navMySchedule',icon:'◫',label:isExternal()?'My Additional Shifts':'My Schedule',show:isEmployee()||isExternal(),run:()=>window.openMySchedule?.()},
   {section:'Scheduling',id:'navAdditional',icon:'＋',label:'Additional Shifts',show:isAdmin()||isEmployee()||isExternal(),run:()=>window.openOpenShifts?.()},
  ];
@@ -26,7 +25,7 @@ function actions(){
   {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>window.openArchiveCenter?.()},
  ];
  const manager=[
-  {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>window.scrollTo({top:0,behavior:'smooth'})},
+  {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
   {section:'Management',id:'navManagerAdditional',icon:'＋',label:'Additional Shifts',show:isManager(),run:()=>window.openOpenShifts?.()},
  ];
  const system=[
@@ -61,6 +60,8 @@ function ensureDashboardStrip(){
  let strip=document.getElementById('accDashboardStrip');if(!strip){strip=document.createElement('div');strip.id='accDashboardStrip';strip.className='acc-dashboard-strip';heading.insertAdjacentElement('afterend',strip)}
  renderDashboardStrip();
 }
+function jumpToQuarter(){document.getElementById('quarterNavigator')?.scrollIntoView({behavior:'smooth',block:'center'})}
+function jumpToWeek(){document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})}
 function renderDashboardStrip(){
  const strip=document.getElementById('accDashboardStrip');if(!strip)return;
  let people='—',weeks='—',status='—',issues='0';
@@ -68,16 +69,33 @@ function renderDashboardStrip(){
  try{const p=getPeriod();if(p&&typeof getWeekStartDatesForPeriod==='function')weeks=getWeekStartDatesForPeriod(p).length}catch(_){}
  try{if(isEmployee()&&typeof getCurrentWeekSubmission==='function'){const s=getCurrentWeekSubmission();status=s?.status==='submitted'?'Submitted':s?.status==='needs_resubmission'?'Resubmit':'Draft'}else status=isAdmin()?'Admin':'View'}catch(_){}
  try{issues=String(window.accScheduleIssuesSummary?.count||0)}catch(_){}
- const cards=isAdmin()?[
-  ['👥','People',people,'Active employees'],['▦','Weeks',weeks,'Selected quarter'],['✓','Access','Admin','Full control'],['⚠','Issues',issues,'Coverage & exceptions']
- ]:isManager()?[
-  ['👥','People',people,'Active employees'],['▦','Weeks',weeks,'Selected quarter'],['👁','Mode','View only','Schedule access'],['🔔','Alerts','On','Updates enabled']
- ]:isExternal()?[
-  ['＋','Role','External','Shift worker'],['🕒','Shifts','View','Additional Shifts'],['👤','Profile',userName(),'Signed in'],['🔔','Alerts','On','Shift notifications']
- ]:[
-  ['▦','Weeks',weeks,'Selected quarter'],['◫','Week status',status,'Current week'],['＋','Additional','Available','Shift signup'],['👤','Profile',userName(),'Signed in']
+ let cards=[];
+ if(isAdmin()) cards=[
+  {icon:'👥',label:'People',value:people,sub:'Active employees',run:()=>window.openAdmin?.()},
+  {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
+  {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>window.openQuarterDashboard?.()},
+  {icon:'⚠',label:'Issues',value:issues,sub:'Coverage & exceptions',run:()=>window.openIssuesCenter?.()}
  ];
- strip.innerHTML=cards.map(c=>`<div class="acc-stat-card"><div class="acc-stat-icon">${c[0]}</div><div><div class="acc-stat-label">${c[1]}</div><div class="acc-stat-value">${c[2]}</div><div class="acc-stat-sub">${c[3]}</div></div></div>`).join('');
+ else if(isManager()) cards=[
+  {icon:'👥',label:'People',value:people,sub:'Active employees',run:jumpToWeek},
+  {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
+  {icon:'👁',label:'Mode',value:'View only',sub:'Schedule access',run:jumpToWeek},
+  {icon:'🔔',label:'Notifications',value:'Open',sub:'Schedule updates',run:()=>window.openNotificationCenter?.()}
+ ];
+ else if(isExternal()) cards=[
+  {icon:'🕒',label:'My shifts',value:'View',sub:'Claimed Additional Shifts',run:()=>window.openMySchedule?.()},
+  {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
+  {icon:'▦',label:'Quarter',value:weeks,sub:'Weeks in period',run:jumpToQuarter},
+  {icon:'🔔',label:'Notifications',value:'Open',sub:'Shift alerts',run:()=>window.openNotificationCenter?.()}
+ ];
+ else cards=[
+  {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
+  {icon:'◫',label:'Week status',value:status,sub:'Current week',run:jumpToWeek},
+  {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
+  {icon:'🔔',label:'Notifications',value:'Open',sub:'Scheduling alerts',run:()=>window.openNotificationCenter?.()}
+ ];
+ strip.innerHTML='';
+ cards.forEach(card=>{const el=document.createElement('button');el.type='button';el.className='acc-stat-card acc-stat-card-action';el.innerHTML=`<div class="acc-stat-icon">${card.icon}</div><div class="acc-stat-copy"><div class="acc-stat-label">${card.label}</div><div class="acc-stat-value">${card.value}</div><div class="acc-stat-sub">${card.sub}</div></div><span class="acc-stat-arrow">›</span>`;el.onclick=()=>invoke(card.run);strip.appendChild(el)});
 }
 function updateIssueBadge(){const b=document.getElementById('accIssuesNavBadge');if(!b)return;const n=Number(window.accScheduleIssuesSummary?.count||0);b.textContent=n>99?'99+':String(n);b.style.display=n?'inline-flex':'none'}
 function refresh(){ensureShell();renderSidebar();ensureDashboardStrip();updateIssueBadge()}
@@ -85,4 +103,5 @@ setTimeout(refresh,0);setTimeout(refresh,700);setTimeout(refresh,1800);
 if(typeof window.updateUserHeader==='function'){const old=window.updateUserHeader;window.updateUserHeader=function(...args){const r=old.apply(this,args);setTimeout(refresh,0);return r}}
 if(typeof window.renderSchedule==='function'){const old=window.renderSchedule;window.renderSchedule=function(...args){const r=old.apply(this,args);setTimeout(renderDashboardStrip,0);return r}}
 window.refreshPremiumLayout=refresh;
+window.renderPremiumDashboardStrip=renderDashboardStrip;
 })();
