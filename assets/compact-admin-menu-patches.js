@@ -1,7 +1,7 @@
 /* ACC Schedule Manager - compact admin menu */
 (function(){
   "use strict";
-  const VERSION="2026.08.14.3";
+  const VERSION="2026.08.14.4";
   console.info(`[ACC Schedule Manager] compact admin menu loaded: ${VERSION}`);
 
   function isAdmin(){
@@ -49,7 +49,7 @@
   const ACTIONS=[
     {id:"managePeopleTopButton",label:"Manage People",icon:"👥",run:()=>typeof window.openAdmin==="function"&&window.openAdmin()},
     {id:"quarterDashboardTopButton",label:"Quarter Dashboard",icon:"📅",run:()=>typeof window.openQuarterDashboard==="function"?window.openQuarterDashboard():typeof window.openAdminQuarterDashboard==="function"?window.openAdminQuarterDashboard():document.getElementById("quarterDashboardTopButton")?.click()},
-    {id:"openShiftsTopButton",label:"Open Shifts",icon:"🕒",run:()=>typeof window.openOpenShifts==="function"&&window.openOpenShifts()},
+    {id:"openShiftsTopButton",label:"Additional Shifts",icon:"🕒",run:()=>typeof window.openOpenShifts==="function"&&window.openOpenShifts()},
     {id:"scheduleHistoryTopButton",label:"History",icon:"🧾",run:()=>typeof window.openScheduleHistory==="function"&&window.openScheduleHistory()},
     {id:"archiveCenterTopButton",label:"Archive",icon:"🗄️",run:()=>typeof window.openArchiveCenter==="function"&&window.openArchiveCenter()}
   ];
