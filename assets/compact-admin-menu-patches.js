@@ -1,28 +1,43 @@
-/* ACC Schedule Manager - compact admin menu */
+/* ACC Schedule Manager - legacy compact admin menu retired in favor of premium sidebar */
 (function(){
-  "use strict";
-  const VERSION="2026.08.14.5";
-  console.info(`[ACC Schedule Manager] compact admin menu loaded: ${VERSION}`);
+  'use strict';
+  const VERSION='2026.08.14.6';
+  console.info(`[ACC Schedule Manager] compact admin menu compatibility loaded: ${VERSION}`);
 
-  function isAdmin(){return Boolean(typeof currentProfile!=="undefined"&&currentProfile&&currentProfile.role==="admin"&&currentProfile.active!==false);}
-  const ADMIN_ONLY_IDS=["adminButton","managePeopleTopButton","quarterDashboardTopButton","scheduleHistoryTopButton","archiveCenterTopButton"];
-  function installStyles(){if(document.getElementById("compactAdminMenuStyles"))return;const s=document.createElement("style");s.id="compactAdminMenuStyles";s.textContent=`
-    .admin-menu-wrap{position:relative;display:inline-flex;align-items:center}#compactAdminMenuButton{background:#1e3a5f!important;border:1px solid #31577f!important;color:white!important;font-weight:700}#compactAdminMenu{position:absolute;right:0;top:calc(100% + 7px);z-index:20000;min-width:220px;background:#fff;border:1px solid #cbd5e1;border-radius:9px;box-shadow:0 14px 35px rgba(15,23,42,.18);padding:6px;display:none}#compactAdminMenu.show{display:block}.compact-admin-item{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:#0f172a;padding:10px 11px;border-radius:7px;text-align:left;font-size:13px;font-weight:650;cursor:pointer}.compact-admin-item:hover{background:#f1f5f9}.compact-admin-item .icon{width:22px;text-align:center;font-size:15px}#accountRequestBell{flex:0 0 40px!important;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:18px!important;line-height:1!important}
-    @media(max-width:760px){.topbar-user{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:7px!important}.topbar-user>button,#compactAdminMenuButton{flex:0 1 auto!important;width:auto!important;min-width:88px!important;min-height:42px!important;padding:8px 11px!important}#accountRequestBell{flex:0 0 40px!important;width:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important}.admin-menu-wrap{flex:0 1 auto}#compactAdminMenu{position:fixed;left:12px;right:12px;top:auto;bottom:12px;min-width:0;max-height:70vh;overflow:auto;border-radius:12px;padding:8px}.compact-admin-item{padding:13px 12px;font-size:14px}}
-  `;document.head.appendChild(s)}
-  const ACTIONS=[
-    {id:"managePeopleTopButton",label:"Manage People",icon:"👥",run:()=>typeof window.openAdmin==="function"&&window.openAdmin()},
-    {id:"quarterDashboardTopButton",label:"Quarter Dashboard",icon:"📅",run:()=>typeof window.openQuarterDashboard==="function"?window.openQuarterDashboard():typeof window.openAdminQuarterDashboard==="function"?window.openAdminQuarterDashboard():document.getElementById("quarterDashboardTopButton")?.click()},
-    {id:"issuesCenterAction",label:"Issues",icon:"⚠️",run:()=>window.openIssuesCenter?.(),badge:true},
-    {id:"openShiftsTopButton",label:"Additional Shifts",icon:"🕒",run:()=>typeof window.openOpenShifts==="function"&&window.openOpenShifts()},
-    {id:"scheduleHistoryTopButton",label:"History",icon:"🧾",run:()=>typeof window.openScheduleHistory==="function"&&window.openScheduleHistory()},
-    {id:"archiveCenterTopButton",label:"Archive",icon:"🗄️",run:()=>typeof window.openArchiveCenter==="function"&&window.openArchiveCenter()}
-  ];
-  function closeMenu(){document.getElementById("compactAdminMenu")?.classList.remove("show")}
-  function hideAdminOnlyControls(){document.getElementById("compactAdminMenuWrap")?.remove();ADMIN_ONLY_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.style.setProperty("display","none","important")});document.querySelectorAll(".topbar-user button").forEach(button=>{const label=button.textContent.trim().toLowerCase();if(["manage people","quarter dashboard","history","archive","admin","issues"].includes(label))button.style.setProperty("display","none","important")})}
-  function ensureMenu(){const topbar=document.querySelector(".topbar-user");if(!topbar)return;if(!isAdmin()){hideAdminOnlyControls();return}let wrap=document.getElementById("compactAdminMenuWrap");if(!wrap){wrap=document.createElement("div");wrap.id="compactAdminMenuWrap";wrap.className="admin-menu-wrap";wrap.innerHTML=`<button id="compactAdminMenuButton" class="topbar-button" type="button" aria-haspopup="true" aria-expanded="false">Admin ▾</button><div id="compactAdminMenu" role="menu"></div>`;const accountBtn=[...topbar.querySelectorAll("button")].find(b=>b.textContent.trim().toLowerCase()==="account");if(accountBtn)accountBtn.insertAdjacentElement("afterend",wrap);else topbar.appendChild(wrap);wrap.querySelector("#compactAdminMenuButton").onclick=e=>{e.stopPropagation();const menu=wrap.querySelector("#compactAdminMenu");const show=!menu.classList.contains("show");menu.classList.toggle("show",show);wrap.querySelector("#compactAdminMenuButton").setAttribute("aria-expanded",String(show));}}
-    const menu=wrap.querySelector("#compactAdminMenu");menu.innerHTML="";ACTIONS.forEach(a=>{const btn=document.createElement("button");btn.className="compact-admin-item";btn.type="button";btn.innerHTML=`<span class="icon">${a.icon}</span><span>${a.label}</span>${a.badge?'<span id="issuesMenuBadge"></span>':''}`;btn.onclick=()=>{closeMenu();a.run()};menu.appendChild(btn)});ACTIONS.forEach(a=>{const b=document.getElementById(a.id);if(b&&!wrap.contains(b))b.style.setProperty("display","none","important")});document.getElementById("adminButton")?.style.setProperty("display","none","important");const bell=document.getElementById("accountRequestBell");if(bell){bell.title="Notifications";bell.setAttribute("aria-label","Notifications")}
-    const summary=window.accScheduleIssuesSummary;if(summary?.count){const badge=document.getElementById('issuesMenuBadge');if(badge){badge.textContent=summary.count>99?'99+':String(summary.count);badge.style.display='inline-flex'}}
+  const ADMIN_ONLY_IDS=['adminButton','managePeopleTopButton','quarterDashboardTopButton','scheduleHistoryTopButton','archiveCenterTopButton'];
+
+  function hideLegacyAdminControls(){
+    document.getElementById('compactAdminMenuWrap')?.remove();
+    ADMIN_ONLY_IDS.forEach(id=>document.getElementById(id)?.style.setProperty('display','none','important'));
+    document.querySelectorAll('.topbar-user button').forEach(button=>{
+      const label=(button.textContent||'').trim().toLowerCase();
+      if(['admin','admin ▾','manage people','quarter dashboard','history','archive','issues'].includes(label)){
+        button.style.setProperty('display','none','important');
+      }
+    });
   }
-  installStyles();document.addEventListener("click",e=>{const wrap=document.getElementById("compactAdminMenuWrap");if(wrap&&!wrap.contains(e.target))closeMenu()});setTimeout(ensureMenu,0);setTimeout(ensureMenu,300);setTimeout(ensureMenu,1000);setTimeout(ensureMenu,2000);if(typeof window.updateUserHeader==="function"){const original=window.updateUserHeader;window.updateUserHeader=function(...args){const r=original.apply(this,args);setTimeout(ensureMenu,0);setTimeout(ensureMenu,100);return r}}const obs=new MutationObserver(()=>setTimeout(ensureMenu,0));const topbar=document.querySelector(".topbar-user");if(topbar)obs.observe(topbar,{childList:true,subtree:false});window.refreshCompactAdminMenu=ensureMenu;
+
+  hideLegacyAdminControls();
+  setTimeout(hideLegacyAdminControls,0);
+  setTimeout(hideLegacyAdminControls,250);
+  setTimeout(hideLegacyAdminControls,900);
+  setTimeout(hideLegacyAdminControls,1800);
+
+  if(typeof window.updateUserHeader==='function'){
+    const original=window.updateUserHeader;
+    window.updateUserHeader=function(...args){
+      const result=original.apply(this,args);
+      setTimeout(hideLegacyAdminControls,0);
+      setTimeout(hideLegacyAdminControls,80);
+      return result;
+    };
+  }
+
+  const observer=new MutationObserver(()=>hideLegacyAdminControls());
+  setTimeout(()=>{
+    const topbar=document.querySelector('.topbar-user');
+    if(topbar)observer.observe(topbar,{childList:true,subtree:false});
+  },0);
+
+  window.refreshCompactAdminMenu=hideLegacyAdminControls;
 })();
