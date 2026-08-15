@@ -1,7 +1,7 @@
 /* ACC Schedule Manager — unified notification feed presentation */
 (function(){
   'use strict';
-  const VERSION='2026.08.15.1';
+  const VERSION='2026.08.15.2';
   let arranging=false;
   let observer=null;
   console.info(`[ACC Schedule Manager] unified notification feed loaded: ${VERSION}`);
@@ -23,6 +23,13 @@
     document.head.appendChild(s);
   }
 
+  function removeLegacySections(content,keepFeed){
+    [...content.children].forEach(child=>{
+      if(child===keepFeed) return;
+      if(child.classList?.contains('notification-center-section') || child.id==='passwordResetNotificationSection') child.remove();
+    });
+  }
+
   function arrange(){
     if(arranging) return;
     const content=document.getElementById('notificationCenterContent');
@@ -35,10 +42,17 @@
     arranging=true;
     try{
       const existing=content.querySelector('.unified-notification-feed');
-      if(existing && cards.every(card=>existing.contains(card))){
+      const outsideCards=cards.filter(card=>!existing?.contains(card));
+
+      if(existing && outsideCards.length===0){
+        removeLegacySections(content,existing);
         const unread=cards.filter(card=>card.classList.contains('unread')).length;
         const count=existing.querySelector('.unified-notification-count');
         if(count) count.textContent=`${unread} unread · ${cards.length} recent`;
+        const list=existing.querySelector('.unified-notification-list');
+        if(list && cards.length===0 && !list.querySelector('.notification-empty')){
+          list.innerHTML='<div class="notification-empty">No notifications right now.</div>';
+        }
         return;
       }
 
@@ -51,6 +65,13 @@
       if(markAll) heading.appendChild(markAll);
 
       if(cards.length){
+        cards.sort((a,b)=>{
+          const ad=a.querySelector('.notification-card-meta')?.textContent||'';
+          const bd=b.querySelector('.notification-card-meta')?.textContent||'';
+          const at=Date.parse(ad.replace(/^Requested\s+/i,''));
+          const bt=Date.parse(bd.replace(/^Requested\s+/i,''));
+          return (Number.isFinite(bt)?bt:0)-(Number.isFinite(at)?at:0);
+        });
         cards.forEach(card=>list.appendChild(card));
       }else{
         const empty=document.createElement('div');
@@ -81,6 +102,7 @@
       const result=await old.apply(this,args);
       setTimeout(()=>{watch();arrange()},30);
       setTimeout(arrange,250);
+      setTimeout(arrange,700);
       return result;
     };
     wrapped.__unifiedFeedHook=true;
