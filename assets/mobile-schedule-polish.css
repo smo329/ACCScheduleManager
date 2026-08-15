@@ -71,6 +71,25 @@
   .legend { box-shadow:0 10px 28px rgba(15,35,70,.06) !important; }
   .legend-grid > div,.legend-item { padding:7px 8px; border:1px solid #e0e8f2; border-radius:9px; background:#f8fafd; }
 }
+
+/* On phones, visually emphasize the signed-in employee without changing the full department schedule. */
+@media (max-width: 760px) {
+  .clinic-panel:has(.current-user-row) .current-user-row td { border-top:1px solid #b9e8d4 !important; border-bottom:1px solid #b9e8d4 !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .schedule-cell { background:#f4fcf8 !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .schedule-cell.editable { background:linear-gradient(180deg,#ecfaf4,#e5f7ef) !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .hours-cell { background:#f0f8f5 !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .week-hours-good { background:#dff5e9 !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .week-hours-low { background:#fff0c7 !important; }
+
+  /* Make status/leave/comment cues readable at a glance. */
+  .flex-leave-badge.has-leave { background:#eee6ff !important; border:1px solid #d8c8ff !important; color:#6b35b5 !important; }
+  .schedule-cell:has(.comment-indicator),.schedule-cell:has(.comment-button[title]:not([title="Add comment"])) { box-shadow:inset 0 -3px 0 #f0b429 !important; }
+
+  /* A little more breathing room between the employee workflow and clinic schedule. */
+  .workflow-panel { margin-bottom:16px !important; }
+  .clinic-panel { margin-bottom:18px !important; }
+}
+
 @media(max-width:560px){
   .table-scroll table{min-width:1010px !important}
   .table-scroll .name-column{min-width:124px !important;width:124px !important;max-width:124px !important}
