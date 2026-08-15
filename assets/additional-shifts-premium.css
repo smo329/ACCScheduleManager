@@ -1,0 +1,86 @@
+/* ACC Schedule Manager — Additional Shifts premium UI */
+#openShiftsModal .modal{border:1px solid rgba(112,143,184,.22);box-shadow:0 28px 80px rgba(3,14,35,.28)}
+#openShiftsModal .modal-header{background:linear-gradient(120deg,#071f47,#0b3970);color:#fff;border-bottom:0}
+#openShiftsModal .modal-title{font-size:19px;letter-spacing:-.02em}
+#openShiftsModal .modal-close{color:#dcecff;background:rgba(255,255,255,.08);border-radius:10px;width:36px;height:36px}
+#openShiftsModal .modal-body{background:#f5f8fc}
+#openShiftsModal .open-shift-toolbar{padding:12px;border:1px solid #dce5f0;border-radius:13px;background:#fff;box-shadow:0 8px 22px rgba(15,35,70,.05)}
+#openShiftsModal .open-shift-toolbar label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#718198;font-weight:850}
+#openShiftsModal .open-shift-toolbar select{min-height:42px;border-radius:9px;border-color:#d5e0ed;background:#f9fbfd;color:#17365d;font-weight:750}
+#openShiftsModal .open-shift-tabs{gap:8px}
+#openShiftsModal .open-shift-tab{border-radius:999px;padding:9px 14px;border-color:#d6e1ed;background:#fff;color:#52657e;box-shadow:0 3px 10px rgba(15,35,70,.04)}
+#openShiftsModal .open-shift-tab.active{background:linear-gradient(115deg,#0b5d50,#087f68);border-color:#087f68;color:#fff;box-shadow:0 7px 18px rgba(8,127,104,.18)}
+
+.open-shift-card{position:relative;overflow:hidden;border:1px solid #dce5ef!important;border-radius:16px!important;background:#fff!important;padding:16px!important;margin-bottom:13px!important;box-shadow:0 10px 28px rgba(15,35,70,.07)}
+.open-shift-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#14a27e}
+.open-shift-card-head{align-items:center!important;padding-left:2px}
+.open-shift-date{font-size:16px!important;font-weight:850!important;letter-spacing:-.015em;color:#17365d!important}
+.open-shift-site{margin-top:4px!important;font-size:11px!important;color:#6e8097!important;font-weight:650}
+.open-shift-meter{display:inline-flex;align-items:center;min-height:29px;padding:5px 9px;border-radius:999px;background:#eaf8f2;color:#137454!important;font-size:10px!important;font-weight:850!important}
+.open-shift-claims{margin-top:13px!important;padding-top:10px!important;border-top:1px solid #e7edf4!important}
+.open-shift-line{min-height:38px;align-items:center!important;padding:7px 3px!important;border-bottom:1px dashed #e4eaf1!important}
+.open-shift-available{display:inline-flex;align-items:center;gap:6px;color:#14835c!important;font-weight:850!important}
+.open-shift-available:before{content:"";width:8px;height:8px;border-radius:999px;background:#2bc58e;box-shadow:0 0 0 4px #e4f8f0}
+.open-shift-covered{display:inline-flex;align-items:center;gap:6px;color:#42546c!important;font-weight:700}
+.open-shift-covered:before{content:"✓";display:grid;place-items:center;width:18px;height:18px;border-radius:999px;background:#e8eef6;color:#536a86;font-size:10px;font-weight:900}
+.open-shift-signup{margin:8px 0 3px!important;padding:11px!important;border:1px solid #dce7f1;background:linear-gradient(145deg,#f8fbfe,#f2f7fb)!important;border-radius:12px!important}
+.open-shift-signup label{font-size:9px!important;text-transform:uppercase;letter-spacing:.055em;color:#72839a!important}
+.open-shift-signup select{min-height:42px!important;border-radius:9px!important;border-color:#d3dfeb!important;color:#17365d;font-weight:800}
+.open-shift-signup .claim-open-shift{min-height:42px;border-radius:9px!important;background:linear-gradient(115deg,#075f51,#07876e)!important;border-color:#07876e!important;box-shadow:0 6px 14px rgba(7,135,110,.15)}
+.open-shift-admin-actions{padding-top:10px;border-top:1px solid #edf1f5}
+.open-shift-empty{border:1px dashed #ccd9e7;border-radius:14px;background:#fff!important;margin-top:10px}
+.open-shift-builder-row{border:1px solid #e0e7f0!important;border-bottom:0!important;background:#fff;border-radius:0;padding:11px!important}
+.open-shift-builder-row:first-child{border-radius:12px 12px 0 0}
+.open-shift-builder-row:last-child{border-bottom:1px solid #e0e7f0!important;border-radius:0 0 12px 12px}
+
+/* Existing pay-period warning, brought into the same card language. */
+.open-shift-pay-warning{border-radius:10px!important;padding:9px 11px!important;font-size:10px!important}
+.open-shift-pay-warning.warning{box-shadow:inset 3px 0 0 #f59e0b}
+.open-shift-pay-warning.good{box-shadow:inset 3px 0 0 #22a06b}
+
+@media(max-width:760px){
+  #openShiftsModal{align-items:flex-end!important;padding:0!important}
+  #openShiftsModal .modal{width:100%!important;max-width:none!important;max-height:94vh!important;margin:0!important;border-radius:22px 22px 0 0!important;border-bottom:0!important}
+  #openShiftsModal .modal-header{padding:16px 17px!important;border-radius:22px 22px 0 0}
+  #openShiftsModal .modal-title{font-size:20px!important}
+  #openShiftsModal .modal-body{padding:13px!important}
+  #openShiftsModal .modal-footer{padding:10px 13px calc(10px + env(safe-area-inset-bottom))!important;background:#fff}
+  #openShiftsModal .modal-footer .modal-button{width:100%;min-height:45px}
+  #openShiftsModal .open-shift-toolbar{grid-template-columns:1fr auto!important;align-items:end!important;padding:10px!important}
+  #openShiftsModal .open-shift-toolbar .form-group{grid-column:1/-1}
+  #openShiftsModal #refreshOpenShifts{grid-column:2;justify-self:end;min-height:38px}
+  #openShiftsModal .open-shift-tabs{display:flex!important;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  #openShiftsModal .open-shift-tabs::-webkit-scrollbar{display:none}
+  #openShiftsModal .open-shift-tab{flex:0 0 auto!important;width:auto!important;white-space:nowrap}
+
+  .open-shift-card{padding:14px 13px!important;border-radius:15px!important;margin-bottom:11px!important}
+  .open-shift-card-head{display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important}
+  .open-shift-date{font-size:15px!important}
+  .open-shift-site{font-size:10px!important;line-height:1.4}
+  .open-shift-meter{align-self:start;white-space:nowrap;font-size:9px!important;padding:5px 8px}
+  .open-shift-line{font-size:11px!important;gap:6px!important}
+  .open-shift-line .modal-button{padding:6px 9px!important;min-height:32px!important;font-size:10px!important}
+  .open-shift-signup{grid-template-columns:1fr 1fr!important;padding:10px!important}
+  .open-shift-signup button{grid-column:1/-1!important;width:100%!important;margin-top:2px}
+  .open-shift-signup select{font-size:14px!important}
+  .open-shift-admin-actions{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .open-shift-admin-actions .modal-button{width:100%!important}
+  .open-shift-builder-row{font-size:11px!important}
+}
+
+@media(prefers-color-scheme:dark){
+  #openShiftsModal .modal-body{background:#101827}
+  #openShiftsModal .open-shift-toolbar,.open-shift-card,.open-shift-empty,.open-shift-builder-row{background:#171b22!important;border-color:#394657!important}
+  #openShiftsModal .open-shift-toolbar select,.open-shift-signup select{background:#222933!important;border-color:#465365!important;color:#eef5ff}
+  #openShiftsModal .open-shift-tab{background:#1c222b;border-color:#3a4657;color:#c7d4e4}
+  .open-shift-date{color:#e4f1ff!important}
+  .open-shift-site{color:#94a6bc!important}
+  .open-shift-meter{background:#103a31;color:#79e5bd!important}
+  .open-shift-claims,.open-shift-admin-actions{border-color:#303b49!important}
+  .open-shift-line{border-color:#303b49!important}
+  .open-shift-available{color:#74e0b7!important}
+  .open-shift-covered{color:#c4d0df!important}
+  .open-shift-covered:before{background:#293443;color:#bcd0e6}
+  .open-shift-signup{background:linear-gradient(145deg,#1a222c,#171e27)!important;border-color:#374454!important}
+  #openShiftsModal .modal-footer{background:#151b23!important;border-color:#344052!important}
+}
