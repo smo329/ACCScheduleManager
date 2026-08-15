@@ -1,0 +1,72 @@
+/* ACC Schedule Manager — My Schedule / My Additional Shifts premium UI */
+#myScheduleModal .modal{border:1px solid rgba(113,143,182,.22);box-shadow:0 28px 80px rgba(3,14,35,.28)}
+#myScheduleModal .modal-header{background:linear-gradient(120deg,#071f47,#0b3970);color:#fff;border-bottom:0}
+#myScheduleModal .modal-title{font-size:19px;letter-spacing:-.02em}
+#myScheduleModal .modal-close{color:#dcecff;background:rgba(255,255,255,.08);border-radius:10px;width:36px;height:36px}
+#myScheduleModal .modal-body{background:#f5f8fc}
+#myScheduleModal .my-schedule-toolbar{padding:12px;border:1px solid #dce5f0;border-radius:13px;background:#fff;box-shadow:0 8px 22px rgba(15,35,70,.05)}
+#myScheduleModal .my-schedule-toolbar label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#718198;font-weight:850}
+#myScheduleModal .my-schedule-toolbar select{min-height:42px;border-radius:9px;border-color:#d5e0ed;background:#f9fbfd;color:#17365d;font-weight:750}
+#myScheduleModal .my-schedule-tabs{gap:8px}
+#myScheduleModal .my-schedule-tab{border-radius:999px;padding:9px 14px;border-color:#d6e1ed;background:#fff;color:#52657e;box-shadow:0 3px 10px rgba(15,35,70,.04)}
+#myScheduleModal .my-schedule-tab.active{background:linear-gradient(115deg,#0b5d50,#087f68);border-color:#087f68;color:#fff;box-shadow:0 7px 18px rgba(8,127,104,.18)}
+
+#myScheduleModal .my-schedule-summary{gap:10px;margin-bottom:15px}
+#myScheduleModal .my-summary-card{position:relative;overflow:hidden;border:1px solid #dce5ef;border-radius:14px;padding:13px 14px;background:linear-gradient(180deg,#fff,#fbfdff);box-shadow:0 8px 22px rgba(15,35,70,.05)}
+#myScheduleModal .my-summary-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#2b7de0}
+#myScheduleModal .my-summary-card:nth-child(2):before{background:#8b5cf6}
+#myScheduleModal .my-summary-card:nth-child(3):before{background:#16a36f}
+#myScheduleModal .my-summary-card strong{font-size:22px;color:#102b55;letter-spacing:-.03em}
+#myScheduleModal .my-summary-card span{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#73849a;font-weight:750}
+
+#myScheduleModal .my-date-card,#myScheduleModal .my-extra-card{position:relative;overflow:hidden;border:1px solid #dce5ef;border-radius:15px;padding:14px 15px;margin-bottom:11px;background:#fff;box-shadow:0 8px 24px rgba(15,35,70,.06)}
+#myScheduleModal .my-date-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#2b7de0}
+#myScheduleModal .my-extra-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#12a77d}
+#myScheduleModal .my-date-head{align-items:center}
+#myScheduleModal .my-date-title{font-size:15px;font-weight:850;color:#17365d;letter-spacing:-.015em}
+#myScheduleModal .my-date-site{font-size:11px;color:#72839a;margin-top:4px;font-weight:650}
+#myScheduleModal .my-code-badge{min-width:48px;min-height:30px;padding:5px 10px;border-radius:999px;background:#eaf3ff;color:#1b5da8;font-size:11px;font-weight:900;box-shadow:inset 0 0 0 1px #d4e5fb}
+#myScheduleModal .my-leave-row{margin-top:10px;padding:8px 10px;border-radius:9px;background:#f2ecff;color:#6b35b5;border:1px solid #ddcffb;font-size:10px;font-weight:750}
+#myScheduleModal .my-extra-time{margin-top:6px;font-size:15px;font-weight:900;color:#0f6a55;letter-spacing:-.01em}
+#myScheduleModal .my-extra-meta{margin-top:4px;font-size:11px;color:#667990;font-weight:650}
+#myScheduleModal .my-schedule-empty{padding:28px 18px;border:1px dashed #ccd9e7;border-radius:14px;background:#fff;color:#6e8097}
+#myScheduleModal .my-schedule-error{border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;padding:10px 12px}
+
+@media(max-width:760px){
+  #myScheduleModal{align-items:flex-end!important;padding:0!important}
+  #myScheduleModal .modal{width:100%!important;max-width:none!important;height:auto!important;max-height:94vh!important;margin:0!important;border-radius:22px 22px 0 0!important;border-bottom:0!important}
+  #myScheduleModal .modal-header{padding:16px 17px!important;border-radius:22px 22px 0 0}
+  #myScheduleModal .modal-title{font-size:20px!important}
+  #myScheduleModal .modal-body{padding:13px!important}
+  #myScheduleModal .modal-footer{padding:10px 13px calc(10px + env(safe-area-inset-bottom))!important;background:#fff}
+  #myScheduleModal .modal-footer .modal-button{width:100%;min-height:45px}
+
+  #myScheduleModal .my-schedule-toolbar{grid-template-columns:1fr auto!important;align-items:end!important;padding:10px!important}
+  #myScheduleModal .my-schedule-toolbar .form-group{grid-column:1/-1}
+  #myScheduleModal #myScheduleRefresh{grid-column:2;justify-self:end;min-height:38px}
+  #myScheduleModal .my-schedule-tabs{display:flex!important;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  #myScheduleModal .my-schedule-tabs::-webkit-scrollbar{display:none}
+  #myScheduleModal .my-schedule-tab{flex:0 0 auto!important;width:auto!important;white-space:nowrap}
+  #myScheduleModal .my-schedule-summary{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  #myScheduleModal .my-schedule-summary .my-summary-card:last-child{grid-column:1/-1}
+  #myScheduleModal .my-summary-card{padding:11px 12px}
+  #myScheduleModal .my-summary-card strong{font-size:20px}
+
+  #myScheduleModal .my-date-card,#myScheduleModal .my-extra-card{padding:13px!important;border-radius:14px!important;margin-bottom:10px!important}
+  #myScheduleModal .my-date-title{font-size:14px!important}
+  #myScheduleModal .my-code-badge{min-width:44px;min-height:28px;font-size:10px}
+  #myScheduleModal .my-extra-time{font-size:14px}
+}
+
+@media(prefers-color-scheme:dark){
+  #myScheduleModal .modal-body{background:#101827}
+  #myScheduleModal .my-schedule-toolbar,#myScheduleModal .my-summary-card,#myScheduleModal .my-date-card,#myScheduleModal .my-extra-card,#myScheduleModal .my-schedule-empty{background:#171b22;border-color:#394657}
+  #myScheduleModal .my-schedule-toolbar select{background:#222933;border-color:#465365;color:#eef5ff}
+  #myScheduleModal .my-schedule-tab{background:#1c222b;border-color:#3a4657;color:#c7d4e4}
+  #myScheduleModal .my-summary-card strong,#myScheduleModal .my-date-title{color:#e4f1ff}
+  #myScheduleModal .my-summary-card span,#myScheduleModal .my-date-site,#myScheduleModal .my-extra-meta,#myScheduleModal .my-schedule-empty{color:#9cafc3}
+  #myScheduleModal .my-code-badge{background:#16314e;color:#acd2ff;box-shadow:inset 0 0 0 1px #294c71}
+  #myScheduleModal .my-leave-row{background:#2a2340;color:#d3c0ff;border-color:#4b3d6f}
+  #myScheduleModal .my-extra-time{color:#73dfbc}
+  #myScheduleModal .modal-footer{background:#151b23!important;border-color:#344052!important}
+}
