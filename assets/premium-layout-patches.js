@@ -1,7 +1,7 @@
 /* ACC Schedule Manager - premium app shell */
 (function(){
 'use strict';
-const VERSION='2026.08.14.2';
+const VERSION='2026.08.14.3';
 console.info(`[ACC Schedule Manager] premium layout loaded: ${VERSION}`);
 function role(){try{return currentProfile?.role||null}catch(_){return null}}
 function isAdmin(){return role()==='admin'}
@@ -9,7 +9,7 @@ function isManager(){return role()==='manager'}
 function isEmployee(){return role()==='employee'}
 function isExternal(){return role()==='external'}
 function closeSidebar(){document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show')}
-function openSidebar(){document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
+function openSidebar(){if(window.innerWidth>900)return;document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
 function invoke(fn){closeSidebar();try{fn?.()}catch(e){console.warn(e)}}
 function actions(){
  const common=[
@@ -35,12 +35,26 @@ function actions(){
  ];
  return [...common,...admin,...manager,...system].filter(x=>x.show!==false);
 }
+function suppressLegacyHeaderControls(){
+ const holder=document.querySelector('.topbar-user');if(!holder)return;
+ holder.querySelectorAll('button').forEach(button=>{
+  if(button.id==='accountRequestBell'||button.id==='accMobileMenuButton')return;
+  const label=(button.textContent||'').trim().toLowerCase();
+  if(['account','sign out','admin','admin ▾','manage people','quarter dashboard','history','archive','issues','additional shifts','my schedule','my additional shifts'].includes(label)){
+   button.style.setProperty('display','none','important');
+   button.setAttribute('aria-hidden','true');
+  }
+ });
+ document.getElementById('compactAdminMenuWrap')?.style.setProperty('display','none','important');
+ const mobile=document.getElementById('accMobileMenuButton');
+ if(mobile) mobile.style.setProperty('display',window.innerWidth<=900?'inline-flex':'none','important');
+}
 function ensureShell(){
  const app=document.getElementById('app');if(!app)return;
  app.classList.add('acc-premium-shell');
  let backdrop=document.getElementById('accSidebarBackdrop');if(!backdrop){backdrop=document.createElement('div');backdrop.id='accSidebarBackdrop';backdrop.className='acc-sidebar-backdrop';backdrop.onclick=closeSidebar;document.body.appendChild(backdrop)}
  let side=document.getElementById('accSidebar');if(!side){side=document.createElement('aside');side.id='accSidebar';side.className='acc-sidebar';app.insertBefore(side,app.querySelector('.main-content'))}
- renderSidebar();ensureMobileButton();ensureDashboardStrip();
+ renderSidebar();ensureMobileButton();ensureDashboardStrip();suppressLegacyHeaderControls();
 }
 function renderSidebar(){
  const side=document.getElementById('accSidebar');if(!side)return;
@@ -51,6 +65,7 @@ function renderSidebar(){
 function ensureMobileButton(){
  const topbar=document.querySelector('.topbar-user');if(!topbar)return;
  let b=document.getElementById('accMobileMenuButton');if(!b){b=document.createElement('button');b.id='accMobileMenuButton';b.className='topbar-button acc-mobile-menu-button';b.type='button';b.setAttribute('aria-label','Open navigation');b.textContent='☰';topbar.insertBefore(b,topbar.firstChild);b.onclick=openSidebar}
+ b.style.setProperty('display',window.innerWidth<=900?'inline-flex':'none','important');
 }
 function getPeriod(){try{return activeSchedulingPeriod||adminSchedulingPeriod||null}catch(_){return null}}
 function ensureDashboardStrip(){
@@ -98,10 +113,13 @@ function renderDashboardStrip(){
  cards.forEach(card=>{const el=document.createElement('button');el.type='button';el.className='acc-stat-card acc-stat-card-action';el.innerHTML=`<div class="acc-stat-icon">${card.icon}</div><div class="acc-stat-copy"><div class="acc-stat-label">${card.label}</div><div class="acc-stat-value">${card.value}</div><div class="acc-stat-sub">${card.sub}</div></div><span class="acc-stat-arrow">›</span>`;el.onclick=()=>invoke(card.run);strip.appendChild(el)});
 }
 function updateIssueBadge(){const b=document.getElementById('accIssuesNavBadge');if(!b)return;const n=Number(window.accScheduleIssuesSummary?.count||0);b.textContent=n>99?'99+':String(n);b.style.display=n?'inline-flex':'none'}
-function refresh(){ensureShell();renderSidebar();ensureDashboardStrip();updateIssueBadge()}
-setTimeout(refresh,0);setTimeout(refresh,700);setTimeout(refresh,1800);
-if(typeof window.updateUserHeader==='function'){const old=window.updateUserHeader;window.updateUserHeader=function(...args){const r=old.apply(this,args);setTimeout(refresh,0);return r}}
+function refresh(){ensureShell();renderSidebar();ensureDashboardStrip();updateIssueBadge();suppressLegacyHeaderControls()}
+setTimeout(refresh,0);setTimeout(refresh,300);setTimeout(refresh,700);setTimeout(refresh,1800);
+window.addEventListener('resize',()=>{ensureMobileButton();suppressLegacyHeaderControls();if(window.innerWidth>900)closeSidebar()});
+if(typeof window.updateUserHeader==='function'){const old=window.updateUserHeader;window.updateUserHeader=function(...args){const r=old.apply(this,args);setTimeout(refresh,0);setTimeout(suppressLegacyHeaderControls,80);return r}}
 if(typeof window.renderSchedule==='function'){const old=window.renderSchedule;window.renderSchedule=function(...args){const r=old.apply(this,args);setTimeout(renderDashboardStrip,0);return r}}
+const headerObserver=new MutationObserver(()=>setTimeout(suppressLegacyHeaderControls,0));
+setTimeout(()=>{const h=document.querySelector('.topbar-user');if(h)headerObserver.observe(h,{childList:true,subtree:false})},0);
 window.refreshPremiumLayout=refresh;
 window.renderPremiumDashboardStrip=renderDashboardStrip;
 })();
