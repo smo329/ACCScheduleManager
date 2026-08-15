@@ -1,12 +1,20 @@
 /* ACC Schedule Manager - compact admin menu */
 (function(){
   "use strict";
-  const VERSION="2026.08.14.1";
+  const VERSION="2026.08.14.2";
   console.info(`[ACC Schedule Manager] compact admin menu loaded: ${VERSION}`);
 
   function isAdmin(){
     return Boolean(window.currentProfile && currentProfile.role==="admin" && currentProfile.active!==false);
   }
+
+  const ADMIN_ONLY_IDS=[
+    "adminButton",
+    "managePeopleTopButton",
+    "quarterDashboardTopButton",
+    "scheduleHistoryTopButton",
+    "archiveCenterTopButton"
+  ];
 
   function installStyles(){
     if(document.getElementById("compactAdminMenuStyles")) return;
@@ -43,13 +51,28 @@
 
   function closeMenu(){document.getElementById("compactAdminMenu")?.classList.remove("show")}
 
+  function hideAdminOnlyControls(){
+    document.getElementById("compactAdminMenuWrap")?.remove();
+    ADMIN_ONLY_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.setProperty("display","none","important");
+    });
+
+    /* Catch legacy copies that older patches may create without reliable IDs. */
+    document.querySelectorAll(".topbar-user button").forEach(button=>{
+      const label=button.textContent.trim().toLowerCase();
+      if(label==="manage people" || label==="quarter dashboard" || label==="history" || label==="archive" || label==="admin"){
+        button.style.setProperty("display","none","important");
+      }
+    });
+  }
+
   function ensureMenu(){
     const topbar=document.querySelector(".topbar-user");
     if(!topbar) return;
 
     if(!isAdmin()){
-      document.getElementById("compactAdminMenuWrap")?.remove();
-      ACTIONS.forEach(a=>{const b=document.getElementById(a.id); if(b) b.style.display="none";});
+      hideAdminOnlyControls();
       return;
     }
 
@@ -85,11 +108,11 @@
 
     ACTIONS.forEach(a=>{
       const b=document.getElementById(a.id);
-      if(b && !wrap.contains(b)) b.style.display="none";
+      if(b && !wrap.contains(b)) b.style.setProperty("display","none","important");
     });
 
     const legacyAdmin=document.getElementById("adminButton");
-    if(legacyAdmin) legacyAdmin.style.display="none";
+    if(legacyAdmin) legacyAdmin.style.setProperty("display","none","important");
 
     const bell=document.getElementById("accountRequestBell");
     if(bell){
@@ -105,14 +128,19 @@
     const wrap=document.getElementById("compactAdminMenuWrap");
     if(wrap && !wrap.contains(e.target)) closeMenu();
   });
-  setTimeout(ensureMenu,0);setTimeout(ensureMenu,300);setTimeout(ensureMenu,1000);
+  setTimeout(ensureMenu,0);setTimeout(ensureMenu,300);setTimeout(ensureMenu,1000);setTimeout(ensureMenu,2000);
 
   if(typeof window.updateUserHeader==="function"){
     const original=window.updateUserHeader;
-    window.updateUserHeader=function(...args){const r=original.apply(this,args);setTimeout(ensureMenu,0);return r;};
+    window.updateUserHeader=function(...args){
+      const r=original.apply(this,args);
+      setTimeout(ensureMenu,0);
+      setTimeout(ensureMenu,100);
+      return r;
+    };
   }
 
   const obs=new MutationObserver(()=>setTimeout(ensureMenu,0));
   const topbar=document.querySelector(".topbar-user");
-  if(topbar) obs.observe(topbar,{childList:true});
+  if(topbar) obs.observe(topbar,{childList:true,subtree:false});
 })();
