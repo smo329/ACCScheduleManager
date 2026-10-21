@@ -11,8 +11,13 @@
     // typed quarter-hour values such as 0.5 or 7.5. Leave codes
     // (VL/PL/TDL) are no longer schedule codes: leave is entered with
     // the + Leave button below the cell.
-    const HOURS_SUGGESTIONS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "A4"];
     const LEAVE_CODES = ["VL", "PL", "TDL"];
+
+    // What a schedule code is shown as in the UI. The stored code stays
+    // "A4" (all hour-counting code maps A4 to 4); only the label changes.
+    function displayCode(code) {
+        return code === "A4" ? "Admin" : code;
+    }
 
     // Worked hours a schedule code represents, or null if it is not a
     // worked-hours code (legacy leave codes return null).
@@ -51,19 +56,6 @@
         return types.map(t => t.code).join(" \u00b7 ");
     }
 
-    function ensureHoursDatalist() {
-        let list = document.getElementById("scheduleHoursList");
-        if (list) return list;
-        list = document.createElement("datalist");
-        list.id = "scheduleHoursList";
-        HOURS_SUGGESTIONS.forEach(code => {
-            const option = document.createElement("option");
-            option.value = code;
-            list.appendChild(option);
-        });
-        document.body.appendChild(list);
-        return list;
-    }
 
     let leavePatchData = {};
     let periodLeavePatchData = {};
@@ -127,7 +119,7 @@
 
         const worked = parseWorkedHours(scheduleCode);
         if (worked !== null && scheduleCode !== "12" && scheduleCode !== "0" && leaveHours > 12 - worked) {
-            showError(`${scheduleCode} plus leave cannot exceed 12 credited hours for the day. Maximum leave with ${scheduleCode} is ${12 - worked} hours.`);
+            showError(`${displayCode(scheduleCode)} plus leave cannot exceed 12 credited hours for the day. Maximum leave with ${displayCode(scheduleCode)} is ${12 - worked} hours.`);
             return false;
         }
 
@@ -232,6 +224,11 @@
     }
 
     function addLeaveBadge(cell, profile, dateKey, canEdit) {
+        // Shift Capacity and Shift Availability are not people: they
+        // never get a + Leave button (or + Admin, below).
+        if (!cell.classList.contains("schedule-cell")) return;
+        const badgeRow = cell.closest ? cell.closest("tr") : null;
+        if (badgeRow && (badgeRow.classList.contains("capacity-row") || badgeRow.classList.contains("availability-row"))) return;
         if (cell.querySelector(".flex-leave-badge")) return;
 
         const summary = leaveSummary(profile.id, dateKey);
@@ -250,6 +247,45 @@
         }
 
         cell.appendChild(item);
+    }
+
+    // + Admin button under the cell, next to + Leave. Clicking it sets
+    // that day to 4-hour Admin time (stored code A4); clicking it again
+    // on an Admin day sets the day back to 0.
+    function addAdminButton(cell, profile, dateKey, currentValue) {
+        if (!cell.classList.contains("schedule-cell")) return;
+        const adminRow = cell.closest ? cell.closest("tr") : null;
+        if (adminRow && (adminRow.classList.contains("capacity-row") || adminRow.classList.contains("availability-row"))) return;
+        if (cell.querySelector(".flex-admin-button")) return;
+
+        const isAdminDay = currentValue === "A4";
+        const button = document.createElement("button");
+        button.className = "flex-admin-button" + (isAdminDay ? " is-admin" : "");
+        button.type = "button";
+        button.textContent = isAdminDay ? "Admin \u2713" : "+ Admin";
+        button.title = isAdminDay
+            ? "This day is set to Admin time. Click to set it back to 0."
+            : "Set this day to 4-hour Admin time.";
+
+        button.onclick = async event => {
+            event.stopPropagation();
+            const newCode = isAdminDay ? "0" : "A4";
+            button.disabled = true;
+            cell.classList.add("saving");
+            const success = await saveScheduleValue(profile.id, dateKey, newCode, null);
+            if (!success) {
+                button.disabled = false;
+                cell.classList.remove("saving");
+                return;
+            }
+            if (!scheduleData[profile.id]) {
+                scheduleData[profile.id] = {};
+            }
+            scheduleData[profile.id][dateKey] = { code: newCode, work_site: null };
+            renderSchedule();
+        };
+
+        cell.appendChild(button);
     }
 
     function injectStyles() {
@@ -273,6 +309,7 @@
             .leave-week-warning button{border:1px solid #d97706;background:#fff7ed;color:#9a3412;border-radius:5px;padding:3px 7px;cursor:pointer;font-weight:700}
             .schedule-cell{min-width:66px!important}.hours-column,.hours-cell{min-width:62px!important;width:62px!important}
             .schedule-hours-input{width:100%;text-align:center}.schedule-leave-display,.schedule-leave-value{background:#fef3c7!important;color:#92400e!important;font-weight:700}
+            .flex-admin-button{display:block;width:100%;margin-top:3px;padding:2px 3px;border:0;border-radius:4px;background:transparent;color:#64748b;font-size:10px;line-height:1.15;cursor:pointer}.flex-admin-button.is-admin{background:#dbeafe;color:#1e40af;font-weight:700}.schedule-admin-value{background:#dbeafe!important;color:#1e40af!important;font-weight:700}
             @media(max-width:650px){.flex-leave-grid{grid-template-columns:1fr}}
         `;
         document.head.appendChild(style);
@@ -497,13 +534,11 @@
         currentWorkSite,
         cell
     ) {
-        ensureHoursDatalist();
-
         const input = document.createElement("input");
         input.className = "schedule-select schedule-hours-input";
-        input.setAttribute("list", "scheduleHoursList");
         input.setAttribute("inputmode", "decimal");
         input.setAttribute("autocomplete", "off");
+        input.setAttribute("placeholder", "Type hours");
         input.spellcheck = false;
 
         // A day with no worked hours but leave entered below the cell
@@ -511,14 +546,14 @@
         // is visible at a glance that leave was entered for that date.
         const isZero = currentValue === "0" || parseWorkedHours(currentValue) === 0;
         const leaveDisplay = isZero ? leaveDisplayFor(profile.id, dateKey) : null;
-        const displayValue = leaveDisplay || currentValue;
+        const displayValue = leaveDisplay || displayCode(currentValue);
         input.value = displayValue;
 
         if (leaveDisplay) {
             input.classList.add("schedule-leave-display");
             input.title = `Leave entered: ${leaveSummary(profile.id, dateKey)} \u2014 type hours to change worked hours, or edit leave with + Leave below.`;
         } else {
-            input.title = "Worked hours (0\u201312, quarter-hour steps, e.g. 7.5) or A4 for admin time. Leave is entered with + Leave below.";
+            input.title = "Type worked hours (0\u201312, quarter-hour steps, e.g. 7.5). Admin time is set with + Admin below. Leave is entered with + Leave below.";
         }
 
         const revert = () => { input.value = displayValue; };
@@ -538,12 +573,12 @@
             }
 
             let selectedValue;
-            if (raw === "A4") {
+            if (raw === "A4" || raw === "ADMIN") {
                 selectedValue = "A4";
             } else {
                 const hours = parseWorkedHours(raw);
                 if (hours === null) {
-                    showError("Enter hours from 0 to 12, in quarter-hour steps (for example 0.5, 2.25 or 7.5), or A4 for admin time.");
+                    showError("Enter hours from 0 to 12, in quarter-hour steps (for example 0.5, 2.25 or 7.5). Admin time is set with + Admin below.");
                     revert();
                     return;
                 }
@@ -630,6 +665,7 @@
         );
 
         addLeaveBadge(cell, profile, dateKey, true);
+        addAdminButton(cell, profile, dateKey, currentValue);
     };
 
     calculateWeeklyHours = function (userId) {
@@ -756,6 +792,14 @@
                     // in the hours box.
                     if (!cell.querySelector("input.schedule-hours-input")) {
                         const stored = getScheduleValue(profile.id, getDateKey(date));
+                        if (stored === "A4") {
+                            const adminSpan = Array.from(cell.querySelectorAll("span"))
+                                .find(el => el.textContent === stored);
+                            if (adminSpan) {
+                                adminSpan.textContent = "Admin";
+                                adminSpan.classList.add("schedule-admin-value");
+                            }
+                        }
                         const isZero = stored === "0" || parseWorkedHours(stored) === 0;
                         const display = isZero ? leaveDisplayFor(profile.id, getDateKey(date)) : null;
                         if (display) {
