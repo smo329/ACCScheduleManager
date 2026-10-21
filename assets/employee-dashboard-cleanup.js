@@ -106,7 +106,17 @@ function installStyles(){
   document.head.appendChild(s);
 }
 
-function apply(){installStyles();cleanTopbar();improveCards();}
+function apply(){
+  // In read-only view-as mode the dashboard strip starts with an
+  // "Acting as" card, not the Weeks card improveCards() assumes is
+  // first. Running it here would relabel that card "Weeks" and
+  // replace its return-dialog click with a scroll to the quarter
+  // navigator — leaving the admin with no way back except reload.
+  // Skip the whole pass in view mode; the strip keeps its original
+  // premium-layout labels, and the Acting as card keeps working.
+  if(window.viewAsActive)return;
+  installStyles();cleanTopbar();improveCards();
+}
 
 setTimeout(apply,0);
 setTimeout(apply,400);
