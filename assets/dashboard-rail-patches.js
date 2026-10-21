@@ -67,8 +67,9 @@ function pickingRows(){
 function quickActions(){
  if(isAdmin())return [
   ['＋','Add Additional Shift',()=>window.openOpenShifts?.()],
-  ['✚','Add Known Leave',()=>{if(window.openKnownLeaveManager)window.openKnownLeaveManager();else window.openQuarterDashboard?.()}],
-  ['👤','Add Personnel',()=>{window.openAdmin?.();setTimeout(()=>window.openAddEmployeeSection?.(),80)}],
+  ['✚','Add Known Leave',()=>{if(window.openKnownLeaveManager)window.openKnownLeaveManager();else window.openQuarterDashboardPanel?.()}],
+  // People-only mode (see premium-layout-patches.js): show the people list, not the quarter controls.
+  ['👤','Add Personnel',()=>{window.openPeopleManagement?.()||window.openAdmin?.();setTimeout(()=>window.openAddEmployeeSection?.(),80)}],
   ['⚠','Review Issues',()=>window.openIssuesCenter?.()]
  ];
  if(isEmployee())return [['▦','My Schedule',()=>window.openMySchedule?.()],['＋','Additional Shifts',()=>window.openOpenShifts?.()],['🔔','Notifications',()=>window.openNotificationCenter?.()]];
@@ -88,7 +89,7 @@ function renderAdminRail(rail){
  <section class="rail-card"><div class="rail-title">Quick Actions</div><div id="railQuickActions"></div></section>
  <section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}</div><div class="picking-list">${rows.slice(0,8).map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span></div>`}).join('')||'<div class="rail-subtle">No active employees.</div>'}</div><button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button></section>`;
  rail.querySelector('#railViewIssues')?.addEventListener('click',()=>window.openIssuesCenter?.());
- rail.querySelector('#railManagePeople')?.addEventListener('click',()=>window.openAdmin?.());
+ rail.querySelector('#railManagePeople')?.addEventListener('click',()=>window.openPeopleManagement?.()||window.openAdmin?.());
 }
 
 function renderPersonalRail(rail){
