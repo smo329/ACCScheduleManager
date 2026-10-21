@@ -654,6 +654,13 @@
 
             let newWorkSite = null;
 
+            // Typed partial shifts get a clinic assignment too, so the
+            // location dropdown appears for them on re-render. Blank
+            // days keep null (no dropdown, not a worked day).
+            if (selectedValue === "12" || parseWorkedHours(selectedValue) > 0) {
+                newWorkSite = currentWorkSite || profile.clinic_site;
+            }
+
             if (selectedValue === "12") {
                 newWorkSite = currentWorkSite || profile.clinic_site;
 
@@ -700,7 +707,7 @@
 
             scheduleData[profile.id][dateKey] = {
                 code: selectedValue,
-                work_site: selectedValue === "12" ? newWorkSite : null
+                work_site: newWorkSite
             };
 
             renderSchedule();
