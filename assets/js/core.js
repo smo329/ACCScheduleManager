@@ -76,6 +76,16 @@ const codeHours = {
     "PL4": 4
 };
 
+// Numeric worked-hours codes (e.g. "7.5", "0.25") count as their own
+// hours, so partial shifts are not silently counted as 0 in totals.
+for (let q = 0; q <= 48; q++) {
+    const h = Math.round(q * 0.25 * 100) / 100;
+    const key = String(h);
+    if (!(key in codeHours)) {
+        codeHours[key] = h;
+    }
+}
+
 const vacationCodes = [
     "VL12",
     "VL4"
