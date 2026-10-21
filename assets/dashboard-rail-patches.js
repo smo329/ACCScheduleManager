@@ -61,11 +61,15 @@ function employeeRows(){try{return (profiles||[]).filter(p=>p.active&&p.role==='
 function accessFor(id){return accessRows.find(x=>x.user_id===id)||null}
 function pickingRows(){
  const emps=employeeRows();
- return emps.sort((a,b)=>{const aa=accessFor(a.id),bb=accessFor(b.id);const aRank=aa?.is_open?0:(aa?.closed_at?2:1);const bRank=bb?.is_open?0:(bb?.closed_at?2:1);if(aRank!==bRank)return aRank-bRank;if(aRank===1){const ao=aa?.pick_order,bo=bb?.pick_order;if(ao!=null||bo!=null){if(ao==null)return 1;if(bo==null)return -1;if(ao!==bo)return ao-bo;}}const at=aa?.opened_at||'9999',bt=bb?.opened_at||'9999';if(at!==bt)return at.localeCompare(bt);return getProfileName(a).localeCompare(getProfileName(b));});
+ const hasManual=emps.some(e=>accessFor(e.id)?.pick_order!=null);
+ if(hasManual){
+  return emps.sort((a,b)=>{const ao=accessFor(a.id)?.pick_order,bo=accessFor(b.id)?.pick_order;if(ao==null&&bo==null)return getProfileName(a).localeCompare(getProfileName(b));if(ao==null)return 1;if(bo==null)return -1;if(ao!==bo)return ao-bo;return getProfileName(a).localeCompare(getProfileName(b));});
+ }
+ return emps.sort((a,b)=>{const aa=accessFor(a.id),bb=accessFor(b.id);const aRank=aa?.is_open?0:(aa?.closed_at?2:1);const bRank=bb?.is_open?0:(bb?.closed_at?2:1);if(aRank!==bRank)return aRank-bRank;const at=aa?.opened_at||'9999',bt=bb?.opened_at||'9999';if(at!==bt)return at.localeCompare(bt);return getProfileName(a).localeCompare(getProfileName(b));});
 }
 function waitingRows(){return pickingRows().filter(pr=>{const a=accessFor(pr.id);return !a?.is_open&&!a?.closed_at})}
 async function movePickingOrder(userId,dir){
- if(!isAdmin())return;const p=period();if(!p)return;const waiting=waitingRows();const idx=waiting.findIndex(pr=>pr.id===userId);if(idx<0)return;const swapIdx=idx+dir;if(swapIdx<0||swapIdx>=waiting.length)return;const next=[...waiting];[next[idx],next[swapIdx]]=[next[swapIdx],next[idx]];try{for(let i=0;i<next.length;i++){const {error}=await supabaseClient.from('scheduling_period_access').upsert({period_id:p.id,user_id:next[i].id,pick_order:i+1},{onConflict:'period_id,user_id'});if(error)throw error}await loadAccess();await renderRail()}catch(e){console.warn('Picking reorder failed:',e)}
+ if(!isAdmin())return;const p=period();if(!p)return;const rows=pickingRows();const idx=rows.findIndex(pr=>pr.id===userId);if(idx<0)return;const swapIdx=idx+dir;if(swapIdx<0||swapIdx>=rows.length)return;const next=[...rows];[next[idx],next[swapIdx]]=[next[swapIdx],next[idx]];try{for(let i=0;i<next.length;i++){const {error}=await supabaseClient.from('scheduling_period_access').upsert({period_id:p.id,user_id:next[i].id,pick_order:i+1},{onConflict:'period_id,user_id'});if(error)throw error}await loadAccess();await renderRail()}catch(e){console.warn('Picking reorder failed:',e)}
 }
 
 function quickActions(){
@@ -83,8 +87,8 @@ function quickActions(){
 }
 
 function pickingCardHtml(){
- const p=period();const rows=pickingRows();const waiting=waitingRows();const waitingIds=new Set(waiting.map(pr=>pr.id));
- return `<section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}</div><div class="picking-list">${rows.map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';const wIdx=waiting.findIndex(w=>w.id===pr.id);const arrows=(isAdmin()&&wIdx>=0)?`<div class="picking-order"><button type="button" data-move="${esc(pr.id)}|-1" ${wIdx===0?'disabled':''} aria-label="Move up">↑</button><button type="button" data-move="${esc(pr.id)}|1" ${wIdx===waiting.length-1?'disabled':''} aria-label="Move down">↓</button></div>`:'';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span>${arrows}</div>`}).join('')||'<div class="rail-subtle">No active employees.</div>'}</div>${isAdmin()?'<button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button>':''}</section>`;
+ const p=period();const rows=pickingRows();
+ return `<section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}</div><div class="picking-list">${rows.map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';const arrows=isAdmin()?`<div class="picking-order"><button type="button" data-move="${esc(pr.id)}|-1" ${i===0?'disabled':''} aria-label="Move up">↑</button><button type="button" data-move="${esc(pr.id)}|1" ${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></div>`:'';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span>${arrows}</div>`}).join('')||'<div class="rail-subtle">No active employees.</div>'}</div>${isAdmin()?'<button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button>':''}</section>`;
 }
 function bindPickingCard(rail){
  rail.querySelectorAll('[data-move]').forEach(b=>{b.onclick=()=>{const [id,dir]=b.dataset.move.split('|');movePickingOrder(id,Number(dir))}});
