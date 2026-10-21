@@ -981,7 +981,11 @@ function renderEditableScheduleCell(
     );
 
     if (
-        currentValue === "12"
+        currentValue === "12" ||
+        (
+            Number.isFinite(Number(currentValue)) &&
+            Number(currentValue) > 0
+        )
     ) {
 
         const siteSelect =
@@ -1069,18 +1073,26 @@ function createWorkSiteSelect(
                 return;
             }
 
-            const allowed =
-                await confirmCapacityFor12Shift(
-                    profile,
-                    dateKey,
-                    newSite
+            const codeNow =
+                getScheduleValue(
+                    profile.id,
+                    dateKey
                 );
 
-            if (!allowed) {
-                select.value =
-                    oldSite;
+            if (codeNow === "12") {
+                const allowed =
+                    await confirmCapacityFor12Shift(
+                        profile,
+                        dateKey,
+                        newSite
+                    );
 
-                return;
+                if (!allowed) {
+                    select.value =
+                        oldSite;
+
+                    return;
+                }
             }
 
             select.disabled =
@@ -1094,7 +1106,10 @@ function createWorkSiteSelect(
                 await saveScheduleValue(
                     profile.id,
                     dateKey,
-                    "12",
+                    getScheduleValue(
+                        profile.id,
+                        dateKey
+                    ),
                     newSite
                 );
 
@@ -1127,7 +1142,10 @@ function createWorkSiteSelect(
             ][
                 dateKey
             ] = {
-                code: "12",
+                code: getScheduleValue(
+                    profile.id,
+                    dateKey
+                ),
                 work_site: newSite
             };
 
@@ -1348,13 +1366,12 @@ async function saveScheduleValue(
                         scheduleCode,
 
                     /*
-                     * Only a working 12-hour shift needs
-                     * a clinic assignment.
+                     * Save the clinic assignment whenever one is
+                     * given (12-hour shifts and typed partial
+                     * shifts alike). Blank / leave days pass null.
                      */
                     work_site:
-                        scheduleCode === "12"
-                            ? workSite
-                            : null,
+                        workSite || null,
 
                     updated_at:
                         new Date()
