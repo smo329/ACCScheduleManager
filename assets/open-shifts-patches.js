@@ -95,9 +95,12 @@
       .open-shift-signup label{display:block;font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px}
       .open-shift-signup select{width:100%;min-height:38px;border:1px solid #cbd5e1;border-radius:5px;background:white;padding:6px}
       .open-shift-admin-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-      .open-shift-builder-row{display:grid;grid-template-columns:auto 1.2fr 1fr .5fr;gap:10px;align-items:center;padding:9px;border-bottom:1px solid #e5e7eb;font-size:12px}
+      .open-shift-builder-row{display:grid;grid-template-columns:auto 1.2fr 1fr auto;gap:10px;align-items:center;padding:9px;border-bottom:1px solid #e5e7eb;font-size:12px}
       .open-shift-builder-row:first-child{border-top:1px solid #e5e7eb}
       .open-shift-builder-row input[type=checkbox]{width:20px;height:20px}
+      .open-shift-builder-count{display:flex;gap:6px;align-items:center;font-size:12px;color:#475569;white-space:nowrap}
+      .open-shift-builder-count input[type=number]{width:64px;padding:6px;border:1px solid #cbd5e1;border-radius:5px;font-size:14px}
+      .open-shift-builder-count input[type=number]:disabled{opacity:.5}
       .open-shift-empty{padding:24px;text-align:center;color:#64748b}
       .open-shift-error{background:#fee2e2;color:#991b1b;padding:10px;border-radius:6px;margin-bottom:10px;display:none}
       .open-shift-success{background:#dcfce7;color:#166534;padding:10px;border-radius:6px;margin-bottom:10px;display:none}
@@ -413,18 +416,40 @@
     try{
       const candidates=await buildCandidates(periodId);
       if(!candidates.length){content.innerHTML=`<div class="open-shift-empty">No unpublished remaining shifts were found for this quarter.</div>`;return;}
+      // Group by date + clinic (Oct 21 2026): buildCandidates emits one row per
+      // remaining slot, so a day/clinic with 3 open slots appeared 3 times
+      // (Open Shift 1, 2, 3). Grouping keeps one row per day/clinic, and the
+      // quantity field is how many of that group's open slots to publish.
+      // Slot numbers are preserved in group order, so publishing N of a group
+      // publishes its first N not-yet-existing slots.
+      const groups=[];const groupByKey=new Map();
+      candidates.forEach(c=>{
+        const key=`${c.shift_date}|${c.clinic_site}`;
+        if(!groupByKey.has(key)){const g={shift_date:c.shift_date,clinic_site:c.clinic_site,capacity:c.capacity,scheduled:c.scheduled,candidates:[]};groupByKey.set(key,g);groups.push(g);}
+        groupByKey.get(key).candidates.push(c);
+      });
       content.innerHTML=`
-        <div style="margin-bottom:10px;color:#475569;font-size:12px;">Select only the remaining shifts you actually want employees to fill. Published shifts become immediately visible for signup.</div>
+        <div style="margin-bottom:10px;color:#475569;font-size:12px;">Select a day/clinic, then choose how many of its open shifts to publish. Published shifts become immediately visible for signup.</div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;"><button id="selectAllOpenCandidates" class="modal-button cancel-button" type="button">Select All</button><button id="clearOpenCandidates" class="modal-button cancel-button" type="button">Clear</button><button id="publishOpenCandidates" class="modal-button save-button" type="button">Publish Selected Shifts</button></div>
-        <div>${candidates.map((c,i)=>`<label class="open-shift-builder-row"><input type="checkbox" class="open-candidate" data-index="${i}"><span><strong>${esc(fmtDate(c.shift_date))}</strong><br><span style="color:#64748b">${c.scheduled} scheduled / ${c.capacity} capacity</span></span><span class="builder-site">${esc(c.clinic_site)}</span><span class="builder-slot">Open Shift ${c.slot_number}</span></label>`).join("")}</div>`;
-      document.getElementById("selectAllOpenCandidates").onclick=()=>document.querySelectorAll(".open-candidate").forEach(x=>x.checked=true);
-      document.getElementById("clearOpenCandidates").onclick=()=>document.querySelectorAll(".open-candidate").forEach(x=>x.checked=false);
-      document.getElementById("publishOpenCandidates").onclick=()=>publishCandidates(candidates,periodId);
+        <div>${groups.map((g,gi)=>`<div class="open-shift-builder-row"><input type="checkbox" class="open-candidate" data-group="${gi}"><span><strong>${esc(fmtDate(g.shift_date))}</strong><br><span style="color:#64748b">${g.scheduled} scheduled / ${g.capacity} capacity · ${g.candidates.length} open shift${g.candidates.length===1?"":"s"} available</span></span><span class="builder-site">${esc(g.clinic_site)}</span><span class="open-shift-builder-count"><label>How many? <input type="number" class="open-candidate-count" data-group="${gi}" min="1" max="${g.candidates.length}" value="${g.candidates.length}" disabled></label></span></div>`).join("")}</div>`;
+      const syncCount=(box)=>{const count=document.querySelector(`.open-candidate-count[data-group="${box.dataset.group}"]`);if(count)count.disabled=!box.checked;};
+      document.querySelectorAll(".open-candidate").forEach(box=>box.addEventListener("change",()=>syncCount(box)));
+      document.getElementById("selectAllOpenCandidates").onclick=()=>{document.querySelectorAll(".open-candidate").forEach(box=>{box.checked=true;const count=document.querySelector(`.open-candidate-count[data-group="${box.dataset.group}"]`);if(count){count.value=count.max;count.disabled=false;}});};
+      document.getElementById("clearOpenCandidates").onclick=()=>{document.querySelectorAll(".open-candidate").forEach(box=>{box.checked=false;const count=document.querySelector(`.open-candidate-count[data-group="${box.dataset.group}"]`);if(count)count.disabled=true;});};
+      document.getElementById("publishOpenCandidates").onclick=()=>publishCandidates(groups,periodId);
     }catch(e){console.error(e);setMessage("error",e.message||"Unable to build remaining shifts.");}
   }
 
-  async function publishCandidates(candidates,periodId){
-    const selected=[...document.querySelectorAll(".open-candidate:checked")].map(x=>candidates[Number(x.dataset.index)]);
+  async function publishCandidates(groups,periodId){
+    const selected=[];
+    document.querySelectorAll(".open-candidate:checked").forEach(box=>{
+      const group=groups[Number(box.dataset.group)];
+      if(!group)return;
+      const countInput=document.querySelector(`.open-candidate-count[data-group="${box.dataset.group}"]`);
+      const wanted=countInput?parseInt(countInput.value,10):group.candidates.length;
+      const n=Math.max(1,Math.min(group.candidates.length,Number.isFinite(wanted)?wanted:group.candidates.length));
+      selected.push(...group.candidates.slice(0,n));
+    });
     if(!selected.length)return setMessage("error","Select at least one shift to publish.");
     const rows=selected.map(c=>({period_id:periodId,shift_date:c.shift_date,clinic_site:c.clinic_site,slot_number:c.slot_number,start_hour:8,end_hour:20,status:"published",created_by:currentUser.id}));
     const {error}=await supabaseClient.from("open_shift_opportunities").insert(rows);
