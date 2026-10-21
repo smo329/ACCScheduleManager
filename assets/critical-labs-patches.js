@@ -68,6 +68,21 @@
     return map;
   }
 
+  // Default panel window: 2 weeks before, this week, and 3 weeks after
+  // (2 past + this week + 3 upcoming = 6 total). Computed from the calendar,
+  // not from the quarter, so it still works at a quarter boundary.
+  function recentWeeks() {
+    let cur = null;
+    try { if (currentWeekStart) cur = keyOf(currentWeekStart); } catch (_) {}
+    if (!cur) cur = sundayOf(keyOf(new Date()));
+    const base = localDate(cur);
+    const out = [];
+    [-14, -7, 0, 7, 14, 21].forEach(off => {
+      const d = new Date(base); d.setDate(d.getDate() + off); out.push(keyOf(d));
+    });
+    return out;
+  }
+
   /* ---- Dashboard banner: "You are covering Critical Labs this week" ---- */
   function ensureBannerEl() {
     let el = document.getElementById('criticalLabsBanner');
@@ -119,44 +134,76 @@
     m = document.createElement('div');
     m.id = 'criticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Critical Labs Coverage</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="criticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">One person per whole week. Only admins can change this. The assigned person sees a banner on their dashboard, and the coverage shows on everybody's Calendar &amp; Print.</p><div id="criticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button save-button" id="criticalLabsSave" type="button">Save Coverage</button><button class="modal-button cancel-button" id="criticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Critical Labs Coverage</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="criticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">One person per whole week. Only admins can change this. The assigned person sees a banner on their dashboard, and the coverage shows on everybody's Calendar &amp; Print.</p><div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" id="criticalLabsFilterRecent" class="modal-button cancel-button">Recent (6 weeks)</button><button type="button" id="criticalLabsFilterAll" class="modal-button cancel-button">All weeks in quarter</button></div><div id="criticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button save-button" id="criticalLabsSave" type="button">Save Coverage</button><button class="modal-button cancel-button" id="criticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#criticalLabsClose').onclick = () => m.classList.remove('show');
     return m;
   }
 
+  // Panel state: loaded = what the database had when last rendered,
+  // pending = unsaved picks (kept across filter switches, so switching
+  // from Recent to All and back never silently drops a pick).
+  let panelFilter = 'recent';
+  let panelLoaded = new Map();
+  let panelPending = new Map();
+  let panelWeeks = [];
+
   window.openCriticalLabsManager = async function () {
     if (!isAdmin()) return;
     const m = ensureModal();
     const msg = m.querySelector('#criticalLabsMessage');
     const box = m.querySelector('#criticalLabsWeeks');
-    msg.className = 'person-editor-message'; msg.textContent = '';
+    const recentBtn = m.querySelector('#criticalLabsFilterRecent');
+    const allBtn = m.querySelector('#criticalLabsFilterAll');
     const period = activePeriod();
-    if (!period) { box.innerHTML = '<div class="my-schedule-empty">No scheduling quarter found, so there are no weeks to assign.</div>'; m.classList.add('show'); return; }
-    const weeks = weeksForPeriod(period);
-    box.innerHTML = '<div class="my-schedule-empty">Loading coverage…</div>';
-    m.classList.add('show');
-    const current = await loadCoverage(period.period_start, period.period_end);
-    const people = eligiblePeople();
-    const rows = weeks.map(w => {
-      const currentId = current.get(w) || '';
-      const opts = [`<option value="">— No coverage —</option>`].concat(people.map(p =>
-        `<option value="${esc(p.id)}" ${p.id === currentId ? 'selected' : ''}>${esc(personName(p))} (${esc(p.clinic_site || '')})</option>`)).join('');
-      return `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef2f7"><div style="min-width:230px;font-weight:750;color:#17365d;font-size:13px">${esc(weekLabel(w))}</div><select data-week="${esc(w)}" style="min-height:38px;border:1px solid #d4dfeb;border-radius:9px;padding:6px 9px;color:#17365d;font-weight:700">${opts}</select></div>`;
-    }).join('');
-    box.innerHTML = rows || '<div class="my-schedule-empty">No weeks in this quarter.</div>';
-    // Keep the loaded values on the modal so Save only writes what changed.
-    m.dataset.loaded = JSON.stringify([...current.entries()]);
+    panelFilter = 'recent';
+    panelLoaded = new Map();
+    panelPending = new Map();
+    panelWeeks = [];
+    msg.className = 'person-editor-message'; msg.textContent = '';
+
+    function setFilterUI() {
+      const active = (b, on) => { if (!b) return; b.style.background = on ? '#17365d' : ''; b.style.color = on ? '#fff' : ''; b.style.borderColor = on ? '#17365d' : ''; };
+      active(recentBtn, panelFilter === 'recent');
+      active(allBtn, panelFilter === 'all');
+    }
+
+    async function renderPanel() {
+      setFilterUI();
+      panelWeeks = panelFilter === 'all' ? (period ? weeksForPeriod(period) : []) : recentWeeks();
+      if (!panelWeeks.length) {
+        box.innerHTML = '<div class="my-schedule-empty">No weeks to show.</div>';
+        return;
+      }
+      box.innerHTML = '<div class="my-schedule-empty">Loading coverage…</div>';
+      const fetched = await loadCoverage(panelWeeks[0], panelWeeks[panelWeeks.length - 1]);
+      panelWeeks.forEach(w => panelLoaded.set(w, fetched.get(w) || ''));
+      const people = eligiblePeople();
+      const rows = panelWeeks.map(w => {
+        const currentId = panelPending.has(w) ? panelPending.get(w) : (panelLoaded.get(w) || '');
+        const opts = [`<option value="">— No coverage —</option>`].concat(people.map(p =>
+          `<option value="${esc(p.id)}" ${p.id === currentId ? 'selected' : ''}>${esc(personName(p))} (${esc(p.clinic_site || '')})</option>`)).join('');
+        return `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef2f7"><div style="min-width:230px;font-weight:750;color:#17365d;font-size:13px">${esc(weekLabel(w))}</div><select data-week="${esc(w)}" style="min-height:38px;border:1px solid #d4dfeb;border-radius:9px;padding:6px 9px;color:#17365d;font-weight:700">${opts}</select></div>`;
+      }).join('');
+      box.innerHTML = rows;
+      box.querySelectorAll('select[data-week]').forEach(sel => {
+        sel.onchange = () => {
+          const week = sel.dataset.week, val = sel.value, old = panelLoaded.get(week) || '';
+          if (val === old) panelPending.delete(week); else panelPending.set(week, val);
+        };
+      });
+    }
+
+    recentBtn.onclick = async () => { panelFilter = 'recent'; await renderPanel(); };
+    allBtn.onclick = async () => { panelFilter = 'all'; await renderPanel(); };
     m.querySelector('#criticalLabsSave').onclick = async function () {
       const btn = this; btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        const loaded = new Map(JSON.parse(m.dataset.loaded || '[]'));
-        const selects = [...box.querySelectorAll('select[data-week]')];
+        // Save only what changed, from the pending map — assignments for
+        // weeks not currently shown are never touched or deleted.
         let changed = 0;
-        for (const sel of selects) {
-          const week = sel.dataset.week, val = sel.value, old = loaded.get(week) || '';
-          if (val === old) continue;
+        for (const [week, val] of [...panelPending.entries()]) {
           changed++;
           if (!val) {
             const { error } = await supabaseClient.from(TABLE).delete().eq('week_start', week);
@@ -166,10 +213,10 @@
             if (error) throw error;
           }
         }
+        panelPending = new Map();
         msg.className = 'person-editor-message success';
         msg.textContent = changed ? 'Critical Labs coverage saved.' : 'No changes to save.';
-        const fresh = await loadCoverage(period.period_start, period.period_end);
-        m.dataset.loaded = JSON.stringify([...fresh.entries()]);
+        await renderPanel();
         try { await refreshBanner(); } catch (_) {}
       } catch (e) {
         console.error(e);
@@ -177,6 +224,9 @@
         msg.textContent = e.message || 'Unable to save coverage.';
       } finally { btn.disabled = false; btn.textContent = 'Save Coverage'; }
     };
+
+    m.classList.add('show');
+    await renderPanel();
   };
 
   // Shared helper for Calendar & Print: coverage for a date range, as a Map
