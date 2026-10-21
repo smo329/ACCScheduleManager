@@ -43,7 +43,8 @@
     const leave = Math.max(0, Number(leaveHours || 0));
     if (code === "12") return Math.max(0, 12 - leave);
     if (code === "A4") return 4;
-    return 0;
+    const n = Number(code);
+    return Number.isFinite(n) && n >= 0 && n <= 12 ? n : 0;
   }
 
   async function getPayPeriodStatus(shiftDate, userId) {
