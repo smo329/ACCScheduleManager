@@ -1905,6 +1905,28 @@ function renderWorkflowPanel() {
             ownQuarterAccess.is_open
         );
 
+    // Who currently holds quarter access, for the Locked badge below.
+    // schedulingAccess already holds every user's row for the active
+    // period, so this needs no extra query. Empty when the viewer themself
+    // holds it (the badge then says Open) or when nobody holds it.
+    const currentQuarterHolderName = (() => {
+        if (!activeSchedulingPeriod || ownQuarterOpen) return "";
+        try {
+            const openRow = Object.values(schedulingAccess || {}).find(
+                row => row && row.is_open
+            );
+            if (!openRow) return "";
+            const holder = (profiles || []).find(
+                profile => profile.id === openRow.user_id
+            );
+            if (!holder) return "";
+            try { return getProfileName(holder); } catch (_) {
+                return [holder.first_name, holder.last_name]
+                    .filter(Boolean).join(" ");
+            }
+        } catch (_) { return ""; }
+    })();
+
     const weekendMonthKeys =
         getPeriodMonthKeys();
 
@@ -1967,7 +1989,9 @@ function renderWorkflowPanel() {
                             ${
                                 ownQuarterOpen
                                     ? "Quarter Access Open"
-                                    : "Quarter Access Locked"
+                                    : currentQuarterHolderName
+                                        ? "Quarter Access Locked — currently open for " + escapeHtml(currentQuarterHolderName)
+                                        : "Quarter Access Locked — no one currently has access open"
                             }
                         </span>
                       `
