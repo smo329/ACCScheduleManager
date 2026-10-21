@@ -34,7 +34,10 @@
         || (quarterSelect
           ? quarterSelect.closest('div[style*="border:1px solid #e5e7eb"]')
           : null),
-      quarterDashboard: modal?.querySelector(".quarter-dashboard") || null
+      quarterDashboard: modal?.querySelector(".quarter-dashboard") || null,
+      // Footer Refresh button (moved there from the inner section header so the
+      // modal doesn't say "Quarter Dashboard" twice). Shown only in quarter mode.
+      quarterRefresh: document.getElementById("quarterDashboardRefreshButton")
     };
   }
 
@@ -58,6 +61,7 @@
     if (parts.peopleList) parts.peopleList.style.display = peopleMode ? "" : "none";
     if (parts.quarterControls) parts.quarterControls.style.display = peopleMode ? "none" : "";
     if (parts.quarterDashboard) parts.quarterDashboard.style.display = peopleMode ? "none" : "";
+    if (parts.quarterRefresh) parts.quarterRefresh.style.display = peopleMode ? "none" : "";
 
     if (!peopleMode) {
       if (typeof closeAddEmployeeSection === "function") closeAddEmployeeSection();
