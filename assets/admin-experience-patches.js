@@ -24,9 +24,16 @@
       adminTop: modal?.querySelector(".admin-top") || null,
       addPerson: document.getElementById("addEmployeeSection"),
       peopleList: document.getElementById("peopleList"),
-      quarterControls: quarterSelect
-        ? quarterSelect.closest('div[style*="border:1px solid #e5e7eb"]')
-        : null,
+      // The quarter box now has an explicit id in index.html (adminQuarterControls).
+      // The previous lookup — quarterSelect.closest('div[style*="border:1px solid #e5e7eb"]')
+      // — is fragile, and in practice the box stayed hidden in Quarter Dashboard mode
+      // (verified by screenshot Oct 21 2026: modal title "Quarter Dashboard", dashboard
+      // section first in the modal body, no quarter box above it). Keep the old lookup
+      // only as a fallback for a cached/older index.html.
+      quarterControls: document.getElementById("adminQuarterControls")
+        || (quarterSelect
+          ? quarterSelect.closest('div[style*="border:1px solid #e5e7eb"]')
+          : null),
       quarterDashboard: modal?.querySelector(".quarter-dashboard") || null
     };
   }
@@ -34,6 +41,12 @@
   function showAdminSection(mode) {
     const parts = getAdminParts();
     if (!parts.modal) return;
+
+    // Reset the modal scroll so the quarter box (at the top of the modal body in
+    // quarter mode) is actually visible, not scrolled out of view from a previous
+    // Manage People view.
+    const body = parts.modal.querySelector(".modal-body");
+    if (body) body.scrollTop = 0;
 
     const peopleMode = mode === "people";
 
