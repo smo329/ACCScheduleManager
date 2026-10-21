@@ -47,6 +47,21 @@
     return Number.isFinite(n) && n >= 0 && n <= 12 ? n : 0;
   }
 
+  // Regular schedule for one day. worked is the scheduled worked
+  // hours (12, A4, or a typed partial such as 7.5). A leave-only day
+  // (legacy VL/PL/TDL code, worked 0) is not a working day for this check.
+  async function getSameDayWork(shiftDate, userId) {
+    const { data, error } = await supabaseClient
+      .from("schedules")
+      .select("schedule_code")
+      .eq("user_id", userId)
+      .eq("schedule_date", shiftDate)
+      .maybeSingle();
+    if (error) throw error;
+    const code = data?.schedule_code || "0";
+    return { worked: qualifyingScheduleHours(code, 0), code };
+  }
+
   async function getPayPeriodStatus(shiftDate, userId) {
     const period = getPayPeriodForDate(shiftDate);
 
@@ -190,6 +205,25 @@
       if (opportunityResult.error) throw opportunityResult.error;
 
       const status = await getPayPeriodStatus(opportunityResult.data.shift_date, currentUser.id);
+
+      // Same-day block, shown in the signup box before any click: an
+      // additional shift cannot be claimed on a day the employee is
+      // already scheduled to work (e.g. Oct 4, 2026, where Test Tester
+      // was both scheduled staff and an additional-shift claim).
+      const sameDay = await getSameDayWork(opportunityResult.data.shift_date, currentUser.id);
+      box.dataset.sameDayBlocked = sameDay.worked > 0 ? "true" : "false";
+      if (sameDay.worked > 0) {
+        warning.className = "open-shift-pay-warning warning";
+        warning.innerHTML = `<strong>Signup blocked:</strong> You are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(opportunityResult.data.shift_date))} (${sameDay.code}). You cannot sign up for an additional shift on a day you are already working.`;
+        const claimBtn = box.querySelector(".claim-open-shift");
+        if (claimBtn) claimBtn.disabled = true;
+        box.dataset.payWarningReady = "true";
+        return;
+      }
+
+      const claimBtn = box.querySelector(".claim-open-shift");
+      if (claimBtn) claimBtn.disabled = false;
+
       const selectedHours = end - start;
       const remainingTo40 = Math.max(0, THRESHOLD - status.qualifyingHours);
       const belowThreshold = Math.min(selectedHours, remainingTo40);
@@ -238,9 +272,10 @@
     end.addEventListener("change", scheduleUpdate);
 
     /*
-     * Replace the original claim button handler so the current warning is
-     * calculated immediately before the insert. Signup is still allowed;
-     * the warning is informational, per the requested workflow.
+     * Replace the original claim button handler so the checks run
+     * immediately before the insert: a same-day working day blocks the
+     * signup outright, and any leave in the pay period prompts for
+     * confirmation before the claim is inserted.
      */
     button.onclick = async function (event) {
       event.preventDefault();
@@ -258,6 +293,47 @@
       }
 
       await updateWarning(box);
+
+      // Re-check fresh here (not just from the banner above): if the
+      // employee is already scheduled to work that day, block the
+      // signup and insert nothing.
+      try {
+        const oppResult = await supabaseClient
+          .from("open_shift_opportunities")
+          .select("shift_date")
+          .eq("id", box.dataset.opp)
+          .single();
+        if (oppResult.error) throw oppResult.error;
+
+        const shiftDate = oppResult.data.shift_date;
+        const sameDay = await getSameDayWork(shiftDate, currentUser.id);
+        if (sameDay.worked > 0) {
+          const errorBox = document.getElementById("openShiftError");
+          if (errorBox) {
+            errorBox.textContent = `Signup blocked: you are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(shiftDate))}, so you cannot sign up for an additional shift that day.`;
+            errorBox.style.display = "block";
+          }
+          return;
+        }
+
+        // Leave in the pay period does not block, but must be confirmed:
+        // additional hours below the 40-hour qualifying threshold may
+        // not be paid at the additional rate.
+        const periodStatus = await getPayPeriodStatus(shiftDate, currentUser.id);
+        if (periodStatus.totalLeave > 0) {
+          const periodLabel = `${fmtShortDate(periodStatus.period.start)}–${fmtShortDate(periodStatus.period.end)}`;
+          const ok = confirm(`You have ${periodStatus.totalLeave} leave hour${periodStatus.totalLeave === 1 ? "" : "s"} in the pay period ${periodLabel}. Additional hours below the 40-hour qualifying threshold may not be paid at the additional rate. Do you want to continue with this signup?`);
+          if (!ok) return;
+        }
+      } catch (checkError) {
+        console.error("Additional-shift signup check failed:", checkError);
+        const errorBox = document.getElementById("openShiftError");
+        if (errorBox) {
+          errorBox.textContent = "Your schedule for that day could not be checked, so the signup was not placed. Please try again.";
+          errorBox.style.display = "block";
+        }
+        return;
+      }
 
       button.disabled = true;
       try {
