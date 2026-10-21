@@ -59,6 +59,12 @@
     if (parts.adminTop) parts.adminTop.style.display = peopleMode ? "" : "none";
     if (parts.addPerson && !peopleMode) parts.addPerson.style.display = "none";
     if (parts.peopleList) parts.peopleList.style.display = peopleMode ? "" : "none";
+    // The Manage People search box is inserted before #peopleList by
+    // people-editor-patches.js, not inside it, so hiding the list alone left
+    // the search visible (and useless) at the bottom of Quarter Dashboard.
+    // Hide it with the list; it returns in Manage People mode.
+    const peopleSearchWrap = document.querySelector(".people-search-wrap");
+    if (peopleSearchWrap) peopleSearchWrap.style.display = peopleMode ? "" : "none";
     if (parts.quarterControls) parts.quarterControls.style.display = peopleMode ? "none" : "";
     if (parts.quarterDashboard) parts.quarterDashboard.style.display = peopleMode ? "none" : "";
     if (parts.quarterRefresh) parts.quarterRefresh.style.display = peopleMode ? "none" : "";
