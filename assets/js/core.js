@@ -52,7 +52,6 @@ let currentWeekStart =
 let activeCommentUserId = null;
 let activeCommentDate = null;
 
-
 /* =========================================================
    SCHEDULE CODES
 ========================================================= */
@@ -110,7 +109,6 @@ document.addEventListener(
         await checkExistingSession();
     }
 );
-
 
 /* =========================================================
    AUTH
@@ -290,7 +288,6 @@ function showApp() {
             "block";
 }
 
-
 /* =========================================================
    START APP / PROFILE
 ========================================================= */
@@ -387,12 +384,22 @@ function updateUserHeader() {
                 ? "Administrator"
                 : "Employee";
 
-    document
-        .getElementById("adminButton")
-        .style.display =
+    // The legacy topbar Admin button was removed from index.html
+    // (Aug 14 2026, "Remove legacy topbar buttons") in favour of the
+    // premium sidebar, so it may not exist. Guard it: without this,
+    // updateUserHeader() throws here, startApplication() never
+    // reaches loadWeek(), and the post-login UI refreshes (premium
+    // sidebar, dashboard rail, etc.) never run — leaving an admin
+    // stuck with the pre-login sidebar and empty schedule tables.
+    const adminButton =
+        document.getElementById("adminButton");
+
+    if (adminButton) {
+        adminButton.style.display =
             currentProfile.role === "admin"
                 ? "inline-block"
                 : "none";
+    }
 
     const site =
         currentProfile.clinic_site
@@ -414,7 +421,6 @@ function updateUserHeader() {
                     Other employees' schedules are read-only${site}.
                   `;
 }
-
 
 /* =========================================================
    DATE HELPERS
@@ -595,7 +601,6 @@ function getClinicCapacity(
         date
     );
 }
-
 
 /* =========================================================
    LOAD WEEK
@@ -1250,7 +1255,6 @@ async function loadWeek() {
     renderSchedule();
 }
 
-
 /* =========================================================
    DISPLAY HELPERS
 ========================================================= */
@@ -1473,7 +1477,6 @@ function syncQuarterSelectionToCurrentWeek() {
     }
 }
 
-
 function renderQuarterNavigator() {
 
     const quarterSelect =
@@ -1673,7 +1676,6 @@ function renderQuarterNavigator() {
         }
     );
 }
-
 
 async function changeViewQuarter() {
 
