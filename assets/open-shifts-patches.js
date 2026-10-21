@@ -352,7 +352,14 @@
         .eq("schedule_date", oppResult.data.shift_date)
         .maybeSingle();
       if (schedResult.error) throw schedResult.error;
-      const worked = scheduledWorkedHours(schedResult.data?.schedule_code || "0");
+      const adminResult = await supabaseClient
+        .from("schedule_admin_hours")
+        .select("admin_hours")
+        .eq("user_id", currentUser.id)
+        .eq("admin_date", oppResult.data.shift_date)
+        .maybeSingle();
+      const adminHours = adminResult.data ? Number(adminResult.data.admin_hours || 0) : 0;
+      const worked = scheduledWorkedHours(schedResult.data?.schedule_code || "0") + adminHours;
       if (worked > 0) {
         throw new Error(`Signup blocked: you are already scheduled to work ${worked} hour${worked === 1 ? "" : "s"} on ${fmtDate(oppResult.data.shift_date)}, so you cannot sign up for an additional shift that day.`);
       }
