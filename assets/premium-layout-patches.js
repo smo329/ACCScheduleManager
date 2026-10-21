@@ -39,6 +39,7 @@ function actions(){
   {section:'Admin',id:'navPeople',icon:'◌',label:'Manage People',show:isAdmin(),run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {section:'Admin',id:'navHistory',icon:'≡',label:'History',show:isAdmin(),run:()=>window.openScheduleHistory?.()},
   {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>window.openArchiveCenter?.()},
+  {section:'Admin',id:'navCriticalLabs',icon:'🧪',label:'Critical Labs',show:isAdmin(),run:()=>window.openCriticalLabsManager?.()},
  ];
  const manager=[
   {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
