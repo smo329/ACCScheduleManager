@@ -104,7 +104,7 @@ function renderDashboardStrip(){
  if(isAdmin()) cards=[
   {icon:'👥',label:'People',value:people,sub:'Active employees',run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
-  {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>window.openQuarterDashboardPanel?.()||window.openAdmin?.()},
+  {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>{if(typeof window.openViewAsPicker==='function')window.openViewAsPicker();else if(window.openQuarterDashboardPanel)window.openQuarterDashboardPanel();else if(window.openAdmin)window.openAdmin();}},
   {icon:'⚠',label:'Issues',value:issues,sub:'Coverage & exceptions',run:()=>window.openIssuesCenter?.()}
  ];
  else if(isManager()) cards=[
@@ -125,6 +125,11 @@ function renderDashboardStrip(){
   {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Scheduling alerts',run:()=>window.openNotificationCenter?.()}
  ];
+ if(window.viewAsActive&&window.viewAsProfile){
+  let targetName='Unknown';
+  try{targetName=(typeof getProfileName==='function'?getProfileName(window.viewAsProfile):`${window.viewAsProfile.first_name||''} ${window.viewAsProfile.last_name||''}`.trim())||'Unknown'}catch(_){}
+  cards.unshift({icon:'\u{1F441}',label:'Acting as',value:targetName,sub:'Read-only \u00b7 Click to return',run:()=>{if(typeof window.openViewAsReturnDialog==='function')window.openViewAsReturnDialog();}});
+ }
  strip.innerHTML='';
  cards.forEach(card=>{const el=document.createElement('button');el.type='button';el.className='acc-stat-card acc-stat-card-action';el.innerHTML=`<div class="acc-stat-icon">${card.icon}</div><div class="acc-stat-copy"><div class="acc-stat-label">${card.label}</div><div class="acc-stat-value">${card.value}</div><div class="acc-stat-sub">${card.sub}</div></div><span class="acc-stat-arrow">›</span>`;el.onclick=()=>invoke(card.run);strip.appendChild(el)});
 }
