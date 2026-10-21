@@ -6,7 +6,64 @@
     "use strict";
 
     const PATCH_VERSION = "2026.08.14.6";
-    const FLEX_CODES = ["0", "12", "A4", "VL", "PL", "TDL"];
+    // Flexible worked hours: the cell control is a text input with a
+    // datalist of common values (whole hours, 12, A4) that also accepts
+    // typed quarter-hour values such as 0.5 or 7.5. Leave codes
+    // (VL/PL/TDL) are no longer schedule codes: leave is entered with
+    // the + Leave button below the cell.
+    const HOURS_SUGGESTIONS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "A4"];
+    const LEAVE_CODES = ["VL", "PL", "TDL"];
+
+    // Worked hours a schedule code represents, or null if it is not a
+    // worked-hours code (legacy leave codes return null).
+    function parseWorkedHours(code) {
+        if (code === "A4") return 4;
+        if (code === "12") return 12;
+        if (typeof code !== "string" || code.trim() === "") return null;
+        const n = Number(code);
+        if (!Number.isFinite(n) || n < 0 || n > 12) return null;
+        if (Math.abs(n * 4 - Math.round(n * 4)) > 0.000001) return null;
+        return Math.round(n * 100) / 100;
+    }
+
+    // Worked hours credited for a day, after leave. A 12-hour shift is
+    // reduced by leave taken that day; a partial shift (including A4)
+    // keeps its hours and leave tops the day up to 12.
+    function workedHoursForCode(code, leaveHours) {
+        if (code === "12") return Math.max(0, 12 - Number(leaveHours || 0));
+        const parsed = parseWorkedHours(code);
+        return parsed === null ? 0 : parsed;
+    }
+
+    function leaveTypesFor(userId, dateKey) {
+        const l = getLeave(userId, dateKey);
+        const types = [];
+        if (l.vacation > 0) types.push({ code: "VL", hours: l.vacation });
+        if (l.professional > 0) types.push({ code: "PL", hours: l.professional });
+        if (l.tdl > 0) types.push({ code: "TDL", hours: l.tdl });
+        return types;
+    }
+
+    // "VL", or "VL \u00b7 PL" when more than one leave type was entered.
+    function leaveDisplayFor(userId, dateKey) {
+        const types = leaveTypesFor(userId, dateKey);
+        if (!types.length) return null;
+        return types.map(t => t.code).join(" \u00b7 ");
+    }
+
+    function ensureHoursDatalist() {
+        let list = document.getElementById("scheduleHoursList");
+        if (list) return list;
+        list = document.createElement("datalist");
+        list.id = "scheduleHoursList";
+        HOURS_SUGGESTIONS.forEach(code => {
+            const option = document.createElement("option");
+            option.value = code;
+            list.appendChild(option);
+        });
+        document.body.appendChild(list);
+        return list;
+    }
 
     let leavePatchData = {};
     let periodLeavePatchData = {};
@@ -68,8 +125,9 @@
 
         const scheduleCode = getScheduleValue(userId, dateKey);
 
-        if (scheduleCode === "A4" && leaveHours > 8) {
-            showError("A4 plus leave cannot exceed 12 credited hours for the day. Maximum leave with A4 is 8 hours.");
+        const worked = parseWorkedHours(scheduleCode);
+        if (worked !== null && scheduleCode !== "12" && scheduleCode !== "0" && leaveHours > 12 - worked) {
+            showError(`${scheduleCode} plus leave cannot exceed 12 credited hours for the day. Maximum leave with ${scheduleCode} is ${12 - worked} hours.`);
             return false;
         }
 
@@ -214,6 +272,7 @@
             .leave-week-warning{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700;font-size:12px}
             .leave-week-warning button{border:1px solid #d97706;background:#fff7ed;color:#9a3412;border-radius:5px;padding:3px 7px;cursor:pointer;font-weight:700}
             .schedule-cell{min-width:66px!important}.hours-column,.hours-cell{min-width:62px!important;width:62px!important}
+            .schedule-hours-input{width:100%;text-align:center}.schedule-leave-display,.schedule-leave-value{background:#fef3c7!important;color:#92400e!important;font-weight:700}
             @media(max-width:650px){.flex-leave-grid{grid-template-columns:1fr}}
         `;
         document.head.appendChild(style);
@@ -231,15 +290,14 @@
 
             leaveHours += dayLeave;
 
-            if (["VL", "PL", "TDL"].includes(code)) {
+            if (
+                ["VL", "PL", "TDL"].includes(code) ||
+                (parseWorkedHours(code) === 0 && dayLeave > 0)
+            ) {
                 fullLeaveCodeDays++;
             }
 
-            if (code === "12") {
-                workedOrAdminHours += Math.max(0, 12 - dayLeave);
-            } else if (code === "A4") {
-                workedOrAdminHours += 4;
-            }
+            workedOrAdminHours += workedHoursForCode(code, dayLeave);
         });
 
         const looksLikeFullLeaveWeek =
@@ -439,20 +497,64 @@
         currentWorkSite,
         cell
     ) {
-        const select = document.createElement("select");
-        select.className = "schedule-select";
+        ensureHoursDatalist();
 
-        FLEX_CODES.forEach(code => {
-            const option = document.createElement("option");
-            option.value = code;
-            option.textContent = code;
-            option.selected = code === currentValue;
-            select.appendChild(option);
-        });
+        const input = document.createElement("input");
+        input.className = "schedule-select schedule-hours-input";
+        input.setAttribute("list", "scheduleHoursList");
+        input.setAttribute("inputmode", "decimal");
+        input.setAttribute("autocomplete", "off");
+        input.spellcheck = false;
 
-        select.addEventListener("change", async function () {
+        // A day with no worked hours but leave entered below the cell
+        // displays as its leave type (e.g. VL) instead of just 0, so it
+        // is visible at a glance that leave was entered for that date.
+        const isZero = currentValue === "0" || parseWorkedHours(currentValue) === 0;
+        const leaveDisplay = isZero ? leaveDisplayFor(profile.id, dateKey) : null;
+        const displayValue = leaveDisplay || currentValue;
+        input.value = displayValue;
+
+        if (leaveDisplay) {
+            input.classList.add("schedule-leave-display");
+            input.title = `Leave entered: ${leaveSummary(profile.id, dateKey)} \u2014 type hours to change worked hours, or edit leave with + Leave below.`;
+        } else {
+            input.title = "Worked hours (0\u201312, quarter-hour steps, e.g. 7.5) or A4 for admin time. Leave is entered with + Leave below.";
+        }
+
+        const revert = () => { input.value = displayValue; };
+
+        input.addEventListener("change", async function () {
+            const raw = input.value.trim().toUpperCase();
             const originalValue = currentValue;
-            const selectedValue = select.value;
+
+            // Leave codes are no longer schedule codes: leave is edited
+            // with the + Leave button below the cell, not here.
+            if (LEAVE_CODES.includes(raw)) {
+                if (raw !== leaveDisplay) {
+                    showError("Leave is entered with + Leave below the cell \u2014 the hours box no longer takes VL, PL or TDL.");
+                }
+                revert();
+                return;
+            }
+
+            let selectedValue;
+            if (raw === "A4") {
+                selectedValue = "A4";
+            } else {
+                const hours = parseWorkedHours(raw);
+                if (hours === null) {
+                    showError("Enter hours from 0 to 12, in quarter-hour steps (for example 0.5, 2.25 or 7.5), or A4 for admin time.");
+                    revert();
+                    return;
+                }
+                selectedValue = String(hours);
+            }
+
+            if (selectedValue === originalValue) {
+                revert();
+                return;
+            }
+
             let newWorkSite = null;
 
             if (selectedValue === "12") {
@@ -460,7 +562,7 @@
 
                 if (!newWorkSite) {
                     alert("This employee needs a primary clinic before a 12-hour shift can be scheduled.");
-                    select.value = originalValue;
+                    revert();
                     return;
                 }
 
@@ -472,31 +574,13 @@
                     );
 
                     if (!allowed) {
-                        select.value = originalValue;
+                        revert();
                         return;
                     }
                 }
             }
 
-            if (
-                ["VL", "PL", "TDL"].includes(selectedValue) &&
-                totalLeave(profile.id, dateKey) === 0
-            ) {
-                const ok = await saveLeave(
-                    profile.id,
-                    dateKey,
-                    selectedValue === "VL" ? 12 : 0,
-                    selectedValue === "PL" ? 12 : 0,
-                    selectedValue === "TDL" ? 12 : 0
-                );
-
-                if (!ok) {
-                    select.value = originalValue;
-                    return;
-                }
-            }
-
-            select.disabled = true;
+            input.disabled = true;
             cell.classList.add("saving");
 
             const success = await saveScheduleValue(
@@ -507,8 +591,8 @@
             );
 
             if (!success) {
-                select.value = originalValue;
-                select.disabled = false;
+                input.value = originalValue;
+                input.disabled = false;
                 cell.classList.remove("saving");
                 return;
             }
@@ -525,7 +609,7 @@
             renderSchedule();
         });
 
-        return select;
+        return input;
     };
 
     const originalEditableCell = renderEditableScheduleCell;
@@ -566,13 +650,7 @@
                 Number(l.professional || 0) +
                 Number(l.tdl || 0);
 
-            let workedHours = 0;
-
-            if (code === "12") {
-                workedHours = Math.max(0, 12 - leaveHours);
-            } else if (code === "A4") {
-                workedHours = 4;
-            }
+            const workedHours = workedHoursForCode(code, leaveHours);
 
             vacation += Number(l.vacation || 0);
             professionalLeave += Number(l.professional || 0);
@@ -670,6 +748,26 @@
                         getDateKey(date),
                         canEditProfile(profile)
                     );
+
+                    // Read-only cells show the stored code as plain text;
+                    // a 0 day with leave entered shows its leave type
+                    // instead of just 0. Editable cells are handled by
+                    // createScheduleSelect, which shows the same display
+                    // in the hours box.
+                    if (!cell.querySelector("input.schedule-hours-input")) {
+                        const stored = getScheduleValue(profile.id, getDateKey(date));
+                        const isZero = stored === "0" || parseWorkedHours(stored) === 0;
+                        const display = isZero ? leaveDisplayFor(profile.id, getDateKey(date)) : null;
+                        if (display) {
+                            const span = Array.from(cell.querySelectorAll("span"))
+                                .find(el => el.textContent === stored);
+                            if (span) {
+                                span.textContent = display;
+                                span.classList.add("schedule-leave-value");
+                                span.title = `Leave entered: ${leaveSummary(profile.id, getDateKey(date))}`;
+                            }
+                        }
+                    }
                 });
             });
         });
