@@ -16,11 +16,27 @@ function actions(){
   {section:'Scheduling',id:'navSchedule',icon:'▦',label:'Schedule',run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
   {section:'Scheduling',id:'navMySchedule',icon:'◫',label:isExternal()?'My Additional Shifts':'My Schedule',show:isEmployee()||isExternal(),run:()=>window.openMySchedule?.()},
   {section:'Scheduling',id:'navAdditional',icon:'＋',label:'Additional Shifts',show:isAdmin()||isEmployee()||isExternal(),run:()=>window.openOpenShifts?.()},
+  // Calendar & Print was previously appended to the sidebar by calendar-print-patches.js
+  // (installNav, on fixed timers and on refreshPremiumLayout only). Every renderSidebar()
+  // rebuilds the sidebar from actions() and wipes that appended button, and the login path
+  // (updateUserHeader -> refresh()) bypasses refreshPremiumLayout, so a freshly signed-in
+  // employee never got the button back — while an already-signed-in admin reloading the
+  // page could, from the script-load timers. Making it a first-class action here, shown
+  // to every signed-in role, means renderSidebar() includes it on every rebuild. It
+  // reuses id navCalendarPrint, so calendar-print's installNav() sees it and skips
+  // adding a duplicate.
+  {section:'Scheduling',id:'navCalendarPrint',icon:'▤',label:'Calendar & Print',show:true,run:()=>window.openCalendarPrint?.()},
  ];
  const admin=[
-  {section:'Admin',id:'navQuarter',icon:'◉',label:'Quarter Dashboard',show:isAdmin(),run:()=>window.openQuarterDashboard?.()||window.openAdminQuarterDashboard?.()},
+  // Use the separated modes already defined in admin-experience-patches.js instead of
+  // openAdmin() directly: openPeopleManagement() shows only the people list (hiding the
+  // quarter controls and Quarter Dashboard), and openQuarterDashboardPanel() shows only
+  // the quarter controls and Quarter Dashboard (hiding the people list). The old
+  // openQuarterDashboard / openAdminQuarterDashboard functions do not exist, so the
+  // Quarter Dashboard sidebar item previously did nothing at all.
+  {section:'Admin',id:'navQuarter',icon:'◉',label:'Quarter Dashboard',show:isAdmin(),run:()=>window.openQuarterDashboardPanel?.()||window.openAdmin?.()},
   {section:'Admin',id:'navIssues',icon:'◇',label:'Coverage & Exceptions',show:isAdmin(),run:()=>window.openIssuesCenter?.(),badge:'issues'},
-  {section:'Admin',id:'navPeople',icon:'◌',label:'Manage People',show:isAdmin(),run:()=>window.openAdmin?.()},
+  {section:'Admin',id:'navPeople',icon:'◌',label:'Manage People',show:isAdmin(),run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {section:'Admin',id:'navHistory',icon:'≡',label:'History',show:isAdmin(),run:()=>window.openScheduleHistory?.()},
   {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>window.openArchiveCenter?.()},
  ];
@@ -86,9 +102,9 @@ function renderDashboardStrip(){
  try{issues=String(window.accScheduleIssuesSummary?.count||0)}catch(_){}
  let cards=[];
  if(isAdmin()) cards=[
-  {icon:'👥',label:'People',value:people,sub:'Active employees',run:()=>window.openAdmin?.()},
+  {icon:'👥',label:'People',value:people,sub:'Active employees',run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
-  {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>window.openQuarterDashboard?.()},
+  {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>window.openQuarterDashboardPanel?.()||window.openAdmin?.()},
   {icon:'⚠',label:'Issues',value:issues,sub:'Coverage & exceptions',run:()=>window.openIssuesCenter?.()}
  ];
  else if(isManager()) cards=[
