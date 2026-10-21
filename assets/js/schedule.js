@@ -464,8 +464,28 @@ function createWeeklyEmployeeRow(
                         "span"
                     );
 
+                // Locked cells render the raw stored code, while
+                // editable cells show "Admin" for A4 via displayCode.
+                // In read-only views (including view-as, where every
+                // row is locked) that meant an Admin day showed as
+                // "A4" instead of "Admin", unlike the person's own
+                // editable row. Render the display form here, at the
+                // source, so it cannot be missed by a later step:
+                // A4 becomes "Admin", and a numeric day with a
+                // separate Admin piece shows "8 + Admin".
+                const adminPieceLocked =
+                    typeof window.getAdminHours === "function"
+                        ? window.getAdminHours(profile.id, dateKey)
+                        : 0;
                 valueSpan.textContent =
-                    value;
+                    value === "A4"
+                        ? "Admin"
+                        : adminPieceLocked > 0
+                            ? `${value} + Admin`
+                            : value;
+                if (value === "A4" || adminPieceLocked > 0) {
+                    valueSpan.classList.add("schedule-admin-value");
+                }
 
                 cell.appendChild(
                     valueSpan
