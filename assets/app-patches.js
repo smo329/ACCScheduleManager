@@ -118,8 +118,10 @@
         const scheduleCode = getScheduleValue(userId, dateKey);
 
         const worked = parseWorkedHours(scheduleCode);
-        if (worked !== null && scheduleCode !== "12" && scheduleCode !== "0" && leaveHours > 12 - worked) {
-            showError(`${displayCode(scheduleCode)} plus leave cannot exceed 12 credited hours for the day. Maximum leave with ${displayCode(scheduleCode)} is ${12 - worked} hours.`);
+        const adminPiece = (typeof window.getAdminHours === "function" ? window.getAdminHours(userId, dateKey) : 0);
+        const effectiveWorked = (worked === null ? 0 : worked) + adminPiece;
+        if (scheduleCode !== "12" && leaveHours > 12 - effectiveWorked) {
+            showError(`Worked hours plus Admin plus leave cannot exceed 12 credited hours for the day. Maximum leave here is ${12 - effectiveWorked} hours.`);
             return false;
         }
 
@@ -249,39 +251,72 @@
         cell.appendChild(item);
     }
 
-    // + Admin button under the cell, next to + Leave. Clicking it sets
-    // that day to 4-hour Admin time (stored code A4); clicking it again
-    // on an Admin day sets the day back to 0.
+    // + Admin button under the cell, next to + Leave. On an A4 day
+    // it toggles that code back to 0; on a numeric day it toggles a
+    // separate 4-hour Admin piece in schedule_admin_hours, so worked
+    // hours are kept and Admin is added on top of them.
     function addAdminButton(cell, profile, dateKey, currentValue) {
         if (!cell.classList.contains("schedule-cell")) return;
         const adminRow = cell.closest ? cell.closest("tr") : null;
         if (adminRow && (adminRow.classList.contains("capacity-row") || adminRow.classList.contains("availability-row"))) return;
         if (cell.querySelector(".flex-admin-button")) return;
 
-        const isAdminDay = currentValue === "A4";
+        // A4 days keep their old behaviour (Admin is the whole day,
+        // clicking toggles back to 0). On numeric days the button
+        // toggles a separate 4-hour Admin piece, so 8 worked hours
+        // plus Admin stays 8 worked plus Admin, totalling 12,
+        // instead of the 8 being replaced.
+        const adminPiece = (typeof window.getAdminHours === "function" ? window.getAdminHours(profile.id, dateKey) : 0);
+        const isLegacyAdminDay = currentValue === "A4";
+        const isAdminDay = isLegacyAdminDay || adminPiece > 0;
         const button = document.createElement("button");
         button.className = "flex-admin-button" + (isAdminDay ? " is-admin" : "");
         button.type = "button";
         button.textContent = isAdminDay ? "Admin \u2713" : "+ Admin";
         button.title = isAdminDay
-            ? "This day is set to Admin time. Click to set it back to 0."
-            : "Set this day to 4-hour Admin time.";
+            ? "Admin time is set for this day. Click to remove it."
+            : "Add 4-hour Admin time to this day, on top of its worked hours.";
 
         button.onclick = async event => {
             event.stopPropagation();
-            const newCode = isAdminDay ? "0" : "A4";
-            button.disabled = true;
-            cell.classList.add("saving");
-            const success = await saveScheduleValue(profile.id, dateKey, newCode, null);
-            if (!success) {
-                button.disabled = false;
-                cell.classList.remove("saving");
+            if (isLegacyAdminDay) {
+                button.disabled = true;
+                cell.classList.add("saving");
+                const success = await saveScheduleValue(profile.id, dateKey, "0", null);
+                if (!success) {
+                    button.disabled = false;
+                    cell.classList.remove("saving");
+                    return;
+                }
+                if (!scheduleData[profile.id]) {
+                    scheduleData[profile.id] = {};
+                }
+                scheduleData[profile.id][dateKey] = { code: "0", work_site: null };
+                renderSchedule();
                 return;
             }
-            if (!scheduleData[profile.id]) {
-                scheduleData[profile.id] = {};
+            if (adminPiece > 0) {
+                button.disabled = true;
+                cell.classList.add("saving");
+                const ok = (typeof window.saveAdminHours === "function") ? await window.saveAdminHours(profile.id, dateKey, 0) : false;
+                button.disabled = false;
+                cell.classList.remove("saving");
+                if (!ok) return;
+                renderSchedule();
+                return;
             }
-            scheduleData[profile.id][dateKey] = { code: newCode, work_site: null };
+            const worked = parseWorkedHours(currentValue) || 0;
+            const leave = totalLeave(profile.id, dateKey);
+            if (worked + leave + 4 > 12) {
+                showError(`Admin time cannot be added: ${worked} worked hours plus ${leave} leave hours already leave only ${Math.max(0, 12 - worked - leave)} hours before the 12-hour day cap.`);
+                return;
+            }
+            button.disabled = true;
+            cell.classList.add("saving");
+            const ok = (typeof window.saveAdminHours === "function") ? await window.saveAdminHours(profile.id, dateKey, 4) : false;
+            button.disabled = false;
+            cell.classList.remove("saving");
+            if (!ok) return;
             renderSchedule();
         };
 
@@ -546,7 +581,7 @@
         // is visible at a glance that leave was entered for that date.
         const isZero = currentValue === "0" || parseWorkedHours(currentValue) === 0;
         const leaveDisplay = isZero ? leaveDisplayFor(profile.id, dateKey) : null;
-        const displayValue = leaveDisplay || displayCode(currentValue);
+        const displayValue = leaveDisplay || (isZero ? "" : displayCode(currentValue));
         input.value = displayValue;
 
         if (leaveDisplay) {
@@ -572,8 +607,35 @@
                 return;
             }
 
-            let selectedValue;
-            if (raw === "A4" || raw === "ADMIN") {
+            // A blank box means 0 hours, not an error. This is
+            // how a 0 day is entered now that 0 days display blank.
+            if (raw === "") {
+                if (originalValue === "0" || parseWorkedHours(originalValue) === 0) {
+                    revert();
+                    return;
+                }
+                selectedValue = "0";
+            } else if (raw === "A4" || raw === "ADMIN") {
+                // On a worked day, typing Admin adds the separate
+                // Admin piece instead of replacing the worked hours.
+                const workedNow = parseWorkedHours(originalValue);
+                if (workedNow !== null && workedNow > 0 && originalValue !== "A4") {
+                    const adminNow = (typeof window.getAdminHours === "function" ? window.getAdminHours(profile.id, dateKey) : 0);
+                    const leaveNow = totalLeave(profile.id, dateKey);
+                    if (workedNow + leaveNow + 4 > 12) {
+                        showError(`Admin time cannot be added: ${workedNow} worked hours plus ${leaveNow} leave hours already leave only ${Math.max(0, 12 - workedNow - leaveNow)} hours before the 12-hour day cap.`);
+                        revert();
+                        return;
+                    }
+                    input.disabled = true;
+                    cell.classList.add("saving");
+                    const ok = (typeof window.saveAdminHours === "function") ? await window.saveAdminHours(profile.id, dateKey, 4) : false;
+                    input.disabled = false;
+                    cell.classList.remove("saving");
+                    if (!ok) { showError("Admin time could not be saved."); revert(); return; }
+                    renderSchedule();
+                    return;
+                }
                 selectedValue = "A4";
             } else {
                 const hours = parseWorkedHours(raw);
@@ -686,7 +748,8 @@
                 Number(l.professional || 0) +
                 Number(l.tdl || 0);
 
-            const workedHours = workedHoursForCode(code, leaveHours);
+            const adminPiece = (typeof window.getAdminHours === "function" ? window.getAdminHours(userId, dateKey) : 0);
+            const workedHours = workedHoursForCode(code, leaveHours) + adminPiece;
 
             vacation += Number(l.vacation || 0);
             professionalLeave += Number(l.professional || 0);
@@ -798,6 +861,15 @@
                             if (adminSpan) {
                                 adminSpan.textContent = "Admin";
                                 adminSpan.classList.add("schedule-admin-value");
+                            }
+                        }
+                        const adminPieceLocked = (typeof window.getAdminHours === "function" ? window.getAdminHours(profile.id, getDateKey(date)) : 0);
+                        if (adminPieceLocked > 0 && stored !== "A4") {
+                            const span = Array.from(cell.querySelectorAll("span"))
+                                .find(el => el.textContent === stored);
+                            if (span) {
+                                span.textContent = `${stored} + Admin`;
+                                span.classList.add("schedule-admin-value");
                             }
                         }
                         const isZero = stored === "0" || parseWorkedHours(stored) === 0;
