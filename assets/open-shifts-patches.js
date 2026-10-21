@@ -322,12 +322,40 @@
     });
   }
 
+  function scheduledWorkedHours(code) {
+    if (code === "12") return 12;
+    if (code === "A4") return 4;
+    const n = Number(code);
+    return Number.isFinite(n) && n >= 0 && n <= 12 ? n : 0;
+  }
+
   async function claimOpenShift(event) {
     const box = event.currentTarget.closest(".open-shift-signup");
     const start = Number(box.querySelector(".open-start").value);
     const end = Number(box.querySelector(".open-end").value);
     event.currentTarget.disabled = true;
     try {
+      // Same-day block (the pay-period warning handler enforces this
+      // too; this covers the case where it is not the handler that
+      // runs): no additional-shift claim on a day the employee is
+      // already scheduled to work.
+      const oppResult = await supabaseClient
+        .from("open_shift_opportunities")
+        .select("shift_date")
+        .eq("id", box.dataset.opp)
+        .single();
+      if (oppResult.error) throw oppResult.error;
+      const schedResult = await supabaseClient
+        .from("schedules")
+        .select("schedule_code")
+        .eq("user_id", currentUser.id)
+        .eq("schedule_date", oppResult.data.shift_date)
+        .maybeSingle();
+      if (schedResult.error) throw schedResult.error;
+      const worked = scheduledWorkedHours(schedResult.data?.schedule_code || "0");
+      if (worked > 0) {
+        throw new Error(`Signup blocked: you are already scheduled to work ${worked} hour${worked === 1 ? "" : "s"} on ${fmtDate(oppResult.data.shift_date)}, so you cannot sign up for an additional shift that day.`);
+      }
       const {error} = await supabaseClient.from("open_shift_claims").insert({
         opportunity_id: box.dataset.opp,
         user_id: currentUser.id,
