@@ -315,55 +315,105 @@
     };
   }
 
-  async function editEmploymentHistory(profile) {
+  // Employment Dates editor, Oct 21 2026: previously this used two successive
+  // browser prompt() dialogs (start date, then end date, typed as YYYY-MM-DD
+  // with no calendar picker). It now expands inline in the person's card with
+  // two separate <input type="date"> fields — start and end — so the browser's
+  // native calendar picker is available for quick dates, and no prompt/alert
+  // is used for entering the dates. End date left blank means currently
+  // employed. The save payload (set_employment_period, latest period id) is
+  // unchanged from the prompt version.
+  async function editEmploymentHistory(profile, button) {
     if (!profile || profile.role !== "employee") return;
+
+    // Toggle: clicking Employment Dates again closes an already-open editor.
+    const card = button?.closest(".person-card")
+      || document.getElementById("peopleList")?.children[
+        profiles.findIndex(p => p.id === profile.id)
+      ] || null;
+    const existing = card?.querySelector(".employment-dates-editor");
+    if (existing) {
+      existing.remove();
+      return;
+    }
 
     await loadEmploymentPeriods();
 
     const periods = employmentPeriodsByUser[profile.id] || [];
     const latest = periods.length ? periods[periods.length - 1] : null;
 
-    const startDate = prompt(
-      "Employment start date (YYYY-MM-DD):",
-      latest?.start_date || todayKey()
-    );
+    const editor = document.createElement("div");
+    editor.className = "employment-dates-editor";
+    editor.innerHTML = `
+      <div class="form-group" style="margin:0;">
+        <label>Start date</label>
+        <input class="employment-start-input" type="date" value="${latest?.start_date || todayKey()}">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>End date</label>
+        <input class="employment-end-input" type="date" value="${latest?.end_date || ""}">
+      </div>
+      <div class="employment-dates-note" style="grid-column:1 / -1;font-size:12px;color:#64748b;">
+        Leave the end date blank if currently employed.
+      </div>
+      <div class="employment-dates-error" style="display:none;grid-column:1 / -1;font-size:12px;color:#b91c1c;"></div>
+      <div style="grid-column:1 / -1;display:flex;gap:8px;">
+        <button type="button" class="modal-button save-button employment-dates-save">Save Dates</button>
+        <button type="button" class="modal-button cancel-button employment-dates-cancel">Cancel</button>
+      </div>
+    `;
 
-    if (startDate === null) return;
+    const host = card || document.getElementById("peopleList");
+    if (!host) return;
+    host.appendChild(editor);
 
-    const endDate = prompt(
-      "Employment end date (YYYY-MM-DD), or leave blank if currently employed:",
-      latest?.end_date || ""
-    );
+    const startInput = editor.querySelector(".employment-start-input");
+    const endInput = editor.querySelector(".employment-end-input");
+    const errorBox = editor.querySelector(".employment-dates-error");
+    const saveButton = editor.querySelector(".employment-dates-save");
 
-    if (endDate === null) return;
+    const showError = (message) => {
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+    };
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate.trim())) {
-      alert("Please enter a valid start date as YYYY-MM-DD.");
-      return;
-    }
+    editor.querySelector(".employment-dates-cancel").onclick = () => editor.remove();
 
-    if (
-      endDate.trim() &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(endDate.trim())
-    ) {
-      alert("Please enter a valid end date as YYYY-MM-DD or leave it blank.");
-      return;
-    }
+    saveButton.onclick = async () => {
+      const startDate = startInput.value;
+      const endDate = endInput.value;
+      errorBox.style.display = "none";
 
-    const success = await invokeManageUser({
-      action: "set_employment_period",
-      user_id: profile.id,
-      period_id: latest?.id || null,
-      start_date: startDate.trim(),
-      end_date: endDate.trim() || null
-    });
+      if (!startDate) {
+        showError("Please choose a start date.");
+        return;
+      }
+      if (endDate && endDate < startDate) {
+        showError("End date must be on or after the start date.");
+        return;
+      }
 
-    if (!success) return;
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving...";
 
-    await loadWeek();
-    renderPeopleList();
+      const success = await invokeManageUser({
+        action: "set_employment_period",
+        user_id: profile.id,
+        period_id: latest?.id || null,
+        start_date: startDate,
+        end_date: endDate || null
+      });
 
-    alert("Employment dates updated.");
+      if (!success) {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save Dates";
+        showError("Unable to save employment dates. Please try again.");
+        return;
+      }
+
+      await loadWeek();
+      renderPeopleList();
+    };
   }
 
   function addEmploymentButtons() {
@@ -384,7 +434,7 @@
       button.type = "button";
       button.className = "person-action employment-dates-button";
       button.textContent = "Employment Dates";
-      button.onclick = () => editEmploymentHistory(profile);
+      button.onclick = () => editEmploymentHistory(profile, button);
 
       card.appendChild(button);
     });
@@ -413,6 +463,31 @@
 
     .acc-dark .historical-employee-row .employee-name::after {
       color:#94a3b8;
+    }
+
+    .employment-dates-editor {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .employment-dates-editor .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+    .employment-dates-editor input[type="date"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
     }
   `;
   document.head.appendChild(style);
