@@ -214,7 +214,7 @@
       box.dataset.sameDayBlocked = sameDay.worked > 0 ? "true" : "false";
       if (sameDay.worked > 0) {
         warning.className = "open-shift-pay-warning warning";
-        warning.innerHTML = `<strong>Signup blocked:</strong> You are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(opportunityResult.data.shift_date))} (${sameDay.code}). You cannot sign up for an additional shift on a day you are already working.`;
+        warning.innerHTML = `<strong>Signup blocked:</strong> You are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(opportunityResult.data.shift_date))} (${sameDay.code === "A4" ? "Admin" : sameDay.code}). You cannot sign up for an additional shift on a day you are already working.`;
         const claimBtn = box.querySelector(".claim-open-shift");
         if (claimBtn) claimBtn.disabled = true;
         box.dataset.payWarningReady = "true";
