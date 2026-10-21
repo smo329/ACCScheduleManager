@@ -51,21 +51,30 @@
   // hours (12, A4, or a typed partial such as 7.5). A leave-only day
   // (legacy VL/PL/TDL code, worked 0) is not a working day for this check.
   async function getSameDayWork(shiftDate, userId) {
-    const { data, error } = await supabaseClient
-      .from("schedules")
-      .select("schedule_code")
-      .eq("user_id", userId)
-      .eq("schedule_date", shiftDate)
-      .maybeSingle();
-    if (error) throw error;
-    const code = data?.schedule_code || "0";
-    return { worked: qualifyingScheduleHours(code, 0), code };
+    const [sched, admin] = await Promise.all([
+      supabaseClient
+        .from("schedules")
+        .select("schedule_code")
+        .eq("user_id", userId)
+        .eq("schedule_date", shiftDate)
+        .maybeSingle(),
+      supabaseClient
+        .from("schedule_admin_hours")
+        .select("admin_hours")
+        .eq("user_id", userId)
+        .eq("admin_date", shiftDate)
+        .maybeSingle()
+    ]);
+    if (sched.error) throw sched.error;
+    const code = sched.data?.schedule_code || "0";
+    const adminHours = admin.data ? Number(admin.data.admin_hours || 0) : 0;
+    return { worked: qualifyingScheduleHours(code, 0) + adminHours, code, adminHours };
   }
 
   async function getPayPeriodStatus(shiftDate, userId) {
     const period = getPayPeriodForDate(shiftDate);
 
-    const [scheduleResult, leaveResult, opportunityResult] = await Promise.all([
+    const [scheduleResult, leaveResult, opportunityResult, adminResult] = await Promise.all([
       supabaseClient
         .from("schedules")
         .select("schedule_date,schedule_code")
@@ -82,11 +91,18 @@
         .from("open_shift_opportunities")
         .select("id,shift_date")
         .gte("shift_date", period.startKey)
-        .lte("shift_date", period.endKey)
+        .lte("shift_date", period.endKey),
+      supabaseClient
+        .from("schedule_admin_hours")
+        .select("admin_date,admin_hours")
+        .eq("user_id", userId)
+        .gte("admin_date", period.startKey)
+        .lte("admin_date", period.endKey)
     ]);
 
     if (scheduleResult.error) throw scheduleResult.error;
     if (leaveResult.error) throw leaveResult.error;
+    if (adminResult.error) throw adminResult.error;
     if (opportunityResult.error) throw opportunityResult.error;
 
     const leaveByDate = new Map();
@@ -105,6 +121,9 @@
         row.schedule_code,
         leaveByDate.get(row.schedule_date) || 0
       );
+    });
+    (adminResult.data || []).forEach(row => {
+      regularWorked += Number(row.admin_hours || 0);
     });
 
     const opportunityIds = (opportunityResult.data || []).map(row => row.id);
@@ -214,7 +233,7 @@
       box.dataset.sameDayBlocked = sameDay.worked > 0 ? "true" : "false";
       if (sameDay.worked > 0) {
         warning.className = "open-shift-pay-warning warning";
-        warning.innerHTML = `<strong>Signup blocked:</strong> You are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(opportunityResult.data.shift_date))} (${sameDay.code === "A4" ? "Admin" : sameDay.code}). You cannot sign up for an additional shift on a day you are already working.`;
+        warning.innerHTML = `<strong>Signup blocked:</strong> You are already scheduled to work ${sameDay.worked} hour${sameDay.worked === 1 ? "" : "s"} on ${fmtShortDate(localDate(opportunityResult.data.shift_date))} (${sameDay.code === "A4" ? "Admin" : sameDay.adminHours > 0 ? `${sameDay.code} + Admin` : sameDay.code}). You cannot sign up for an additional shift on a day you are already working.`;
         const claimBtn = box.querySelector(".claim-open-shift");
         if (claimBtn) claimBtn.disabled = true;
         box.dataset.payWarningReady = "true";
