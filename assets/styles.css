@@ -523,11 +523,11 @@
             position: relative;
         }
 
-        .schedule-cell.editable { background: #ecfdf5; }
-        .schedule-cell.editable:hover { background: #d1fae5; }
+        .schedule-cell.editable { background: white; }
+        .schedule-cell.editable:hover { background: #f1f5f9; }
         .schedule-cell.locked { background: white; color: #374151; }
         .weekend-cell { background: #f8fafc; }
-        .current-user-row .weekend-cell.editable { background: #e7f8ef; }
+        .current-user-row .weekend-cell.editable { background: #f8fafc; }
 
         .schedule-select,
         .capacity-select {
