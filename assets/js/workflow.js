@@ -309,6 +309,196 @@ function getQuarterAccessStatusForUser(
 }
 
 
+let quarterAccessPickerUserId = null;
+let quarterAccessPickerPeriodId = null;
+let quarterAccessPickerCurrentOpen = false;
+let quarterAccessPickerHasRow = false;
+let quarterAccessPickerExistingOverride = null;
+
+
+function ensureQuarterAccessPicker() {
+
+    let overlay =
+        document.getElementById(
+            "quarterAccessPickerOverlay"
+        );
+
+    if (overlay) {
+        return overlay;
+    }
+
+    overlay =
+        document.createElement(
+            "div"
+        );
+
+    overlay.id =
+        "quarterAccessPickerOverlay";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.innerHTML =
+        `
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="quarterAccessPickerTitle">
+                    Change scheduling picks
+                </div>
+                <button class="modal-close" type="button" onclick="closeQuarterAccessPicker()">\u00d7</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="quarterAccessPickerSelect">Scheduling quarter</label>
+                    <select id="quarterAccessPickerSelect"></select>
+                </div>
+                <div id="quarterAccessPickerState" style="color:#475569;font-size:13px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-button cancel-button" type="button" onclick="closeQuarterAccessPicker()">Cancel</button>
+                <button class="modal-button save-button" type="button" id="quarterAccessPickerAction" onclick="applyQuarterAccess()"></button>
+            </div>
+        </div>
+        `;
+
+    document.body.appendChild(
+        overlay
+    );
+
+    document
+        .getElementById(
+            "quarterAccessPickerSelect"
+        )
+        .addEventListener(
+            "change",
+            refreshQuarterAccessPickerState
+        );
+
+    return overlay;
+}
+
+
+function closeQuarterAccessPicker() {
+
+    const overlay =
+        document.getElementById(
+            "quarterAccessPickerOverlay"
+        );
+
+    if (overlay) {
+        overlay.classList.remove(
+            "show"
+        );
+    }
+
+    quarterAccessPickerUserId = null;
+    quarterAccessPickerPeriodId = null;
+}
+
+
+async function refreshQuarterAccessPickerState() {
+
+    const select =
+        document.getElementById(
+            "quarterAccessPickerSelect"
+        );
+
+    const state =
+        document.getElementById(
+            "quarterAccessPickerState"
+        );
+
+    const action =
+        document.getElementById(
+            "quarterAccessPickerAction"
+        );
+
+    if (!select || !state || !action) {
+        return;
+    }
+
+    quarterAccessPickerPeriodId =
+        select.value || null;
+
+    const period =
+        allSchedulingPeriods.find(
+            item =>
+                item.id ===
+                quarterAccessPickerPeriodId
+        );
+
+    const profile =
+        profiles.find(
+            item =>
+                item.id ===
+                quarterAccessPickerUserId
+        );
+
+    if (!period || !profile) {
+        state.textContent =
+            "Select a scheduling quarter.";
+        action.textContent = "";
+        action.disabled = true;
+        return;
+    }
+
+    action.disabled = false;
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from(
+                "scheduling_period_access"
+            )
+            .select(
+                "is_open, weekend_target_override"
+            )
+            .eq(
+                "period_id",
+                period.id
+            )
+            .eq(
+                "user_id",
+                profile.id
+            )
+            .maybeSingle();
+
+    if (error) {
+        state.textContent =
+            `Could not load the current picks state for ${period.name}.`;
+        action.textContent = "";
+        action.disabled = true;
+        return;
+    }
+
+    quarterAccessPickerHasRow =
+        Boolean(data);
+
+    quarterAccessPickerCurrentOpen =
+        Boolean(
+            data &&
+            data.is_open
+        );
+
+    quarterAccessPickerExistingOverride =
+        data
+            ? data.weekend_target_override
+            : null;
+
+    state.textContent =
+        quarterAccessPickerHasRow
+            ? `Picks for ${getProfileName(profile)} are currently ${quarterAccessPickerCurrentOpen ? "open" : "closed"} for ${period.name}.`
+            : `No picks row exists yet for ${getProfileName(profile)} in ${period.name}. This action will create one.`;
+
+    action.textContent =
+        quarterAccessPickerCurrentOpen
+            ? `Close picks for ${period.name}`
+            : `Open picks for ${period.name}`;
+}
+
+
 async function toggleQuarterAccess(
     userId
 ) {
@@ -316,19 +506,20 @@ async function toggleQuarterAccess(
     if (
         !currentProfile ||
         currentProfile.role !==
-            "admin" ||
-        !adminSchedulingPeriod
+            "admin"
     ) {
         return;
     }
 
-    const currentlyOpen =
-        getQuarterAccessStatusForUser(
-            userId
-        );
+    if (window.viewAsActive) {
+        return;
+    }
 
-    const nextOpen =
-        !currentlyOpen;
+    const overlay =
+        ensureQuarterAccessPicker();
+
+    quarterAccessPickerUserId =
+        userId;
 
     const profile =
         profiles.find(
@@ -336,21 +527,89 @@ async function toggleQuarterAccess(
                 item.id === userId
         );
 
-    const confirmed =
-        confirm(
-            nextOpen
-                ? `Open ${adminSchedulingPeriod.name} scheduling for ${getProfileName(profile)}?`
-                : `Close ${adminSchedulingPeriod.name} scheduling for ${getProfileName(profile)}?`
+    document
+        .getElementById(
+            "quarterAccessPickerTitle"
+        )
+        .textContent =
+            `Change scheduling picks for ${getProfileName(profile)}`;
+
+    const select =
+        document.getElementById(
+            "quarterAccessPickerSelect"
         );
 
-    if (!confirmed) {
+    select.innerHTML = "";
+
+    allSchedulingPeriods.forEach(
+        period => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value =
+                period.id;
+
+            option.textContent =
+                period.name;
+
+            if (
+                adminSchedulingPeriod &&
+                period.id ===
+                    adminSchedulingPeriod.id
+            ) {
+                option.selected = true;
+            }
+
+            select.appendChild(
+                option
+            );
+        }
+    );
+
+    overlay.classList.add(
+        "show"
+    );
+
+    await refreshQuarterAccessPickerState();
+}
+
+
+async function applyQuarterAccess() {
+
+    if (
+        !currentProfile ||
+        currentProfile.role !==
+            "admin" ||
+        !quarterAccessPickerUserId ||
+        !quarterAccessPickerPeriodId
+    ) {
         return;
     }
 
-    const existing =
-        adminSchedulingAccess[
-            userId
-        ];
+    if (window.viewAsActive) {
+        closeQuarterAccessPicker();
+        return;
+    }
+
+    if (
+        currentUser &&
+        currentProfile.id !==
+            currentUser.id
+    ) {
+        closeQuarterAccessPicker();
+
+        showError(
+            "Your session does not match the account shown. Please sign out and sign back in, then try again."
+        );
+
+        return;
+    }
+
+    const nextOpen =
+        !quarterAccessPickerCurrentOpen;
 
     const now =
         new Date().toISOString();
@@ -366,19 +625,17 @@ async function toggleQuarterAccess(
             .upsert(
                 {
                     period_id:
-                        adminSchedulingPeriod.id,
+                        quarterAccessPickerPeriodId,
 
                     user_id:
-                        userId,
+                        quarterAccessPickerUserId,
 
                     is_open:
                         nextOpen,
 
                     weekend_target_override:
-                        existing &&
-                        existing.weekend_target_override !==
-                            undefined
-                            ? existing.weekend_target_override
+                        quarterAccessPickerHasRow
+                            ? quarterAccessPickerExistingOverride
                             : null,
 
                     opened_at:
@@ -411,22 +668,148 @@ async function toggleQuarterAccess(
         return;
     }
 
-    adminSchedulingAccess[
-        userId
-    ] = data;
+    if (
+        adminSchedulingPeriod &&
+        adminSchedulingPeriod.id ===
+            quarterAccessPickerPeriodId
+    ) {
+        adminSchedulingAccess[
+            quarterAccessPickerUserId
+        ] = data;
+    }
 
     if (
         activeSchedulingPeriod &&
         activeSchedulingPeriod.id ===
-            adminSchedulingPeriod.id
+            quarterAccessPickerPeriodId
     ) {
         schedulingAccess[
-            userId
+            quarterAccessPickerUserId
         ] = data;
     }
 
+    closeQuarterAccessPicker();
+
     renderPeopleList();
     renderSchedule();
+}
+
+
+async function ensureAccessRowsForPeriod(
+    periodId
+) {
+
+    if (
+        !currentProfile ||
+        currentProfile.role !==
+            "admin" ||
+        !periodId ||
+        window.viewAsActive
+    ) {
+        return false;
+    }
+
+    if (
+        currentUser &&
+        currentProfile.id !==
+            currentUser.id
+    ) {
+        return false;
+    }
+
+    const {
+        data: existingRows,
+        error: existingError
+    } =
+        await supabaseClient
+            .from(
+                "scheduling_period_access"
+            )
+            .select(
+                "user_id"
+            )
+            .eq(
+                "period_id",
+                periodId
+            );
+
+    if (existingError) {
+        console.warn(
+            "Could not check scheduling access rows for backfill:",
+            existingError
+        );
+        return false;
+    }
+
+    const existingIds =
+        new Set(
+            (existingRows || []).map(
+                row => row.user_id
+            )
+        );
+
+    const missing =
+        profiles.filter(
+            profile =>
+                profile.active &&
+                profile.role !==
+                    "admin" &&
+                !existingIds.has(
+                    profile.id
+                )
+        );
+
+    if (missing.length === 0) {
+        return true;
+    }
+
+    const {
+        data: inserted,
+        error: insertError
+    } =
+        await supabaseClient
+            .from(
+                "scheduling_period_access"
+            )
+            .insert(
+                missing.map(
+                    profile => ({
+                        period_id:
+                            periodId,
+                        user_id:
+                            profile.id,
+                        is_open:
+                            false,
+                        weekend_target_override:
+                            null
+                    })
+                )
+            )
+            .select();
+
+    if (insertError) {
+        console.warn(
+            "Could not backfill missing scheduling access rows:",
+            insertError
+        );
+        return false;
+    }
+
+    if (
+        adminSchedulingPeriod &&
+        adminSchedulingPeriod.id ===
+            periodId
+    ) {
+        (inserted || []).forEach(
+            row => {
+                adminSchedulingAccess[
+                    row.user_id
+                ] = row;
+            }
+        );
+    }
+
+    return true;
 }
 
 
@@ -472,6 +855,14 @@ async function changeAdminQuarter() {
                 adminSchedulingPeriodId
         )
         || null;
+
+    if (
+        adminSchedulingPeriod
+    ) {
+        await ensureAccessRowsForPeriod(
+            adminSchedulingPeriod.id
+        );
+    }
 
     await loadWeek();
 
