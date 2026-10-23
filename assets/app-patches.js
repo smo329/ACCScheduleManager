@@ -716,6 +716,21 @@
                 work_site: newWorkSite
             };
 
+            // Full Week Leave stores leave in the schedule code itself
+            // (VL/PL/TDL) plus a leave-hours row. Replacing that code
+            // with worked hours (or 0) means the day is no longer
+            // leave, so clear its leave row too — otherwise the
+            // 0-day leave display puts VL straight back in the box
+            // and it looks like the 0 never saved. Leave entered via
+            // + Leave lives on a 0-code day instead, so it is untouched
+            // here and is cleared with + Leave, as before.
+            if (LEAVE_CODES.includes(originalValue)) {
+                const leaveCleared = await saveLeave(profile.id, dateKey, 0, 0, 0);
+                if (!leaveCleared) {
+                    showError("Worked hours saved, but that day's leave could not be cleared — clear it with + Leave if VL is still showing.");
+                }
+            }
+
             renderSchedule();
         });
 
