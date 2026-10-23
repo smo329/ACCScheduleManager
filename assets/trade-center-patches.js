@@ -415,42 +415,4 @@
     };
   };
 
-  /* ---- Sidebar entry point. The premium sidebar rebuilds itself on
-   * every renderSidebar(), which wipes appended buttons — so, like the
-   * calendar-print installer before it became first-class, this re-adds
-   * the button after every sidebar refresh. It is deliberately NOT a
-   * premium-layout edit, so the Trade Center change stays in its own
-   * files. ---- */
-  function installNav() {
-    try {
-      if (!eligible()) return;
-      const side = document.getElementById('accSidebar');
-      if (!side || document.getElementById('navTradeCenter')) return;
-      const sections = [...side.querySelectorAll('.acc-sidebar-section')];
-      const scheduling = sections.find(s => (s.querySelector('.acc-sidebar-label')?.textContent || '').trim() === 'Scheduling') || sections[0];
-      if (!scheduling) return;
-      const btn = document.createElement('button');
-      btn.className = 'acc-nav-item';
-      btn.id = 'navTradeCenter';
-      btn.type = 'button';
-      btn.innerHTML = '<span class="acc-nav-icon">⇄</span><span class="acc-nav-text">Trade Center</span>';
-      btn.onclick = () => { side.classList.remove('open'); document.getElementById('accSidebarBackdrop')?.classList.remove('show'); window.openTradeCenter?.(); };
-      scheduling.appendChild(btn);
-    } catch (_) {}
-  }
-  setTimeout(installNav, 500);
-  setTimeout(installNav, 1500);
-  setTimeout(installNav, 3000);
-  if (typeof window.refreshPremiumLayout === 'function' && !window.refreshPremiumLayout.__tradeCenterHook) {
-    const old = window.refreshPremiumLayout;
-    const wrapped = function (...args) { const r = old.apply(this, args); setTimeout(installNav, 0); return r; };
-    wrapped.__tradeCenterHook = true;
-    window.refreshPremiumLayout = wrapped;
-  }
-  if (typeof window.updateUserHeader === 'function' && !window.updateUserHeader.__tradeCenterHook) {
-    const old = window.updateUserHeader;
-    const wrapped = function (...args) { const r = old.apply(this, args); setTimeout(installNav, 0); return r; };
-    wrapped.__tradeCenterHook = true;
-    window.updateUserHeader = wrapped;
-  }
 })();
