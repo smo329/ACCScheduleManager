@@ -100,7 +100,7 @@
     const el = ensureBannerEl();
     if (!el) return;
     el.style.display = 'none';
-    el.textContent = '';
+    el.innerHTML = '';
     if (isViewAs()) return; // View-as shows the viewed person's view, not the admin's own coverage.
     let uid = null;
     try { uid = currentUser?.id || null; } catch (_) {}
@@ -112,8 +112,20 @@
     if (!weekStart) weekStart = sundayOf(keyOf(new Date()));
     const map = await loadCoverage(weekStart, weekStart);
     if (map.get(weekStart) === uid) {
-      el.textContent = `🧪 You are covering Critical Labs this week (${weekLabel(weekStart)}).`;
-      el.style.display = 'block';
+      // Trade Center 1:1 swap entry point: the button sits on the right
+      // of the banner. It opens the coverage-week picker in
+      // trade-center-patches.js; if that file has not loaded, the
+      // button simply does nothing rather than breaking the banner.
+      el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;padding:12px 14px;border-radius:10px;background:#ede9fe;color:#4c1d95;font-weight:800;font-size:13px;border:1px solid #c4b5fd';
+      const label = document.createElement('span');
+      label.textContent = `🧪 You are covering Critical Labs this week (${weekLabel(weekStart)}).`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Request Trade';
+      btn.style.cssText = 'flex:none;background:#fff;color:#4c1d95;border:1px solid #c4b5fd;border-radius:8px;padding:7px 12px;font-weight:800;font-size:12px;cursor:pointer';
+      btn.onclick = () => { try { window.openCriticalLabsTradePicker?.(weekStart); } catch (_) {} };
+      el.append(label, btn);
+      el.style.display = 'flex';
     }
   }
 
