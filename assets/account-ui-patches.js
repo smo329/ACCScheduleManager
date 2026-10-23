@@ -273,7 +273,7 @@
             [
                 "account",
                 "Account Settings",
-                "Password and security"
+                "Email, username, password and security"
             ]
         ].forEach(
             (
@@ -358,9 +358,6 @@
             ),
             getFormGroupFor(
                 "accountLastName"
-            ),
-            getFormGroupFor(
-                "accountEmail"
             ),
             document.getElementById(
                 "saveAccountInfoButton"
@@ -459,11 +456,14 @@
             </div>
 
             <div class="account-settings-section-subtitle">
-                Update your password and account security.
+                Update your email, username, password and account security.
             </div>
             `;
 
         [
+            getFormGroupFor(
+                "accountEmail"
+            ),
             getFormGroupFor(
                 "accountNewPassword"
             ),
