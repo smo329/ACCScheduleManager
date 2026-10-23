@@ -422,12 +422,10 @@
     const container = document.getElementById("peopleList");
     if (!container) return;
 
-    const cards = [...container.children];
-
-    profiles.forEach((profile, index) => {
+    profiles.forEach((profile) => {
       if (profile.role !== "employee") return;
 
-      const card = cards[index];
+      const card = container.querySelector(`.person-card[data-user-id="${profile.id}"]`);
       if (!card || card.querySelector(".employment-dates-button")) return;
 
       const button = document.createElement("button");
