@@ -16,8 +16,14 @@ async function load(){
     .eq('user_id',currentUser.id).eq('channel','in_app').eq('event_type','password_reset_request')
     .in('status',['sent','read'])
     .order('created_at',{ascending:false}).limit(50);
-  if(error){console.warn('Password-reset notifications failed',error);resetNotifications=[];return}
-  resetNotifications=data||[];
+  if(error){console.warn('Password-reset notifications failed',error);resetNotifications=[];window.accPasswordResetUnreadCount=0;return}
+  // Collapse duplicate rows for the same person into one card (newest
+  // row kept; unread if any duplicate is unread). Dismissing / marking
+  // that card read updates every duplicate id behind it.
+  const grouped=new Map();
+  for(const n of (data||[])){const key=(n.metadata&&n.metadata.target_user_id)||n.id;const prev=grouped.get(key);if(!prev){grouped.set(key,{...n,_duplicateIds:[n.id]});}else{prev._duplicateIds.push(n.id);if(prev.read_at&&!n.read_at)prev.read_at=null;}}
+  resetNotifications=[...grouped.values()];
+  window.accPasswordResetUnreadCount=resetNotifications.filter(n=>!n.read_at).length;
 }
 function ensureBellDot(){
   const bell=document.getElementById('accountRequestBell');if(!bell)return;
@@ -30,7 +36,8 @@ async function setStatus(id,status){
   if(!id||!currentUser)return;
   const values={status};
   if(status==='read'||status==='resolved'||status==='dismissed')values.read_at=new Date().toISOString();
-  const {error}=await supabaseClient.from('notification_log').update(values).eq('id',id).eq('user_id',currentUser.id);
+  const row=resetNotifications.find(n=>n.id===id);const ids=row&&row._duplicateIds?row._duplicateIds:[id];
+  const {error}=await supabaseClient.from('notification_log').update(values).eq('user_id',currentUser.id).in('id',ids);
   if(error){console.warn('Unable to update password-reset notification',error);return false}
   await refresh();
   window.refreshNotificationCenter?.();
@@ -47,7 +54,7 @@ function renderIntoCenter(){
   section.querySelectorAll('.mark-reset-read').forEach(b=>b.onclick=async()=>{const id=b.closest('[data-password-reset-id]')?.dataset.passwordResetId;if(id)await setStatus(id,'read')});
   section.querySelectorAll('.dismiss-reset-request').forEach(b=>b.onclick=async()=>{const id=b.closest('[data-password-reset-id]')?.dataset.passwordResetId;if(!id)return;if(!confirm('Dismiss this password reset request?'))return;await setStatus(id,'dismissed')});
 }
-async function refresh(){await load();ensureBellDot();const modal=document.getElementById('notificationCenterModal');if(modal?.style.display==='flex')renderIntoCenter()}
+async function refresh(){await load();ensureBellDot();if(typeof window.refreshNotificationCenter==='function')window.refreshNotificationCenter();const modal=document.getElementById('notificationCenterModal');if(modal?.style.display==='flex')renderIntoCenter()}
 function hookOpen(){if(typeof window.openNotificationCenter!=='function'||window.openNotificationCenter.__passwordResetHook)return;const old=window.openNotificationCenter;const wrapped=async function(...args){const r=await old.apply(this,args);await refresh();renderIntoCenter();return r};wrapped.__passwordResetHook=true;window.openNotificationCenter=wrapped;const bell=document.getElementById('accountRequestBell');if(bell)bell.onclick=wrapped}
 window.resolvePasswordResetNotification=async function(id){return setStatus(id,'resolved')};
 window.refreshPasswordResetNotifications=refresh;
