@@ -4,6 +4,7 @@
 
   const VERSION = "2026.08.14.2";
   let pendingRequests = [];
+  let submittedEmail = "";
 
   console.info(`[ACC Schedule Manager] account request patch loaded: ${VERSION}`);
 
@@ -70,12 +71,38 @@
     return overlay;
   }
 
+  function setRequestFormVisible(show) {
+    const modal = document.getElementById("requestAccessModal");
+    if (!modal) return;
+    modal.querySelectorAll(".modal-body .form-group, .modal-body > p").forEach(el => { el.style.display = show ? "" : "none"; });
+    const submit = modal.querySelector("#requestAccessSubmit");
+    if (submit) submit.style.display = show ? "" : "none";
+    const cancel = modal.querySelector("#requestAccessCancel");
+    if (cancel) cancel.textContent = show ? "Cancel" : "Done";
+  }
+
+  function showRequestConfirmation(text) {
+    const modal = document.getElementById("requestAccessModal");
+    if (!modal) return;
+    const messageBox = modal.querySelector("#requestAccessMessage");
+    messageBox.textContent = text;
+    messageBox.style.display = "block";
+    modal.querySelector("#requestAccessError").style.display = "none";
+    setRequestFormVisible(false);
+  }
+
   function openRequestAccessModal() {
     const modal = ensureRequestAccessModal();
     modal.style.display = "flex";
+    if (submittedEmail) {
+      showRequestConfirmation("✓ Request already submitted for " + submittedEmail + ". An administrator will review it. You do not need to submit again.");
+      return;
+    }
+    setRequestFormVisible(true);
+    modal.querySelector("#requestFirstName").value = "";
+    modal.querySelector("#requestLastName").value = "";
     const loginEmail = document.getElementById("email")?.value?.trim() || "";
-    const requestEmail = modal.querySelector("#requestEmail");
-    if (loginEmail && !requestEmail.value) requestEmail.value = loginEmail;
+    modal.querySelector("#requestEmail").value = loginEmail;
     modal.querySelector("#requestAccessMessage").style.display = "none";
     modal.querySelector("#requestAccessError").style.display = "none";
   }
@@ -107,6 +134,11 @@
       return;
     }
 
+    if (submittedEmail && email.toLowerCase() === submittedEmail) {
+      showRequestConfirmation("✓ Request already submitted for " + submittedEmail + ". An administrator will review it. You do not need to submit again.");
+      return;
+    }
+
     button.disabled = true;
     button.textContent = "Submitting...";
     try {
@@ -115,19 +147,19 @@
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Unable to submit request.");
 
+      submittedEmail = email.toLowerCase();
+      document.getElementById("requestFirstName").value = "";
+      document.getElementById("requestLastName").value = "";
+      document.getElementById("requestEmail").value = "";
       if (data?.already_pending) {
-        messageBox.textContent = "A request for this email is already pending review.";
+        showRequestConfirmation("✓ A request for " + email + " is already pending review. You do not need to submit again.");
       } else {
-        messageBox.textContent = "Your request was submitted. An administrator will review it.";
-        document.getElementById("requestFirstName").value = "";
-        document.getElementById("requestLastName").value = "";
+        showRequestConfirmation("✓ Request submitted for " + email + ". An administrator will review it. You do not need to submit again.");
       }
-      messageBox.style.display = "block";
     } catch (error) {
       console.error(error);
       errorBox.textContent = "Unable to submit access request: " + (error.message || "Unknown error");
       errorBox.style.display = "block";
-    } finally {
       button.disabled = false;
       button.textContent = "Submit Request";
     }
@@ -439,6 +471,7 @@
   const style = document.createElement("style");
   style.id = "accountRequestPatchStyles";
   style.textContent = `
+    .account-message{display:none;margin-bottom:15px;padding:12px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:700;text-align:center}
     .account-request-bell{position:relative;min-width:42px;padding-left:10px;padding-right:10px}
     .account-request-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;align-items:center;justify-content:center;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;border:2px solid #17365d}
     .account-request-card{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px;margin-bottom:10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff}
