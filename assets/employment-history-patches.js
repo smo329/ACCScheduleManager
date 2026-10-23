@@ -432,11 +432,16 @@
 
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "person-action employment-dates-button";
+      button.className = "modal-button cancel-button employment-dates-button";
       button.textContent = "Employment Dates";
       button.onclick = () => editEmploymentHistory(profile, button);
 
-      card.appendChild(button);
+      const buttons = card.querySelector(".person-buttons");
+      if (buttons) {
+        buttons.appendChild(button);
+      } else {
+        card.appendChild(button);
+      }
     });
   }
 
@@ -466,6 +471,7 @@
     }
 
     .employment-dates-editor {
+      grid-column: 1 / -1;
       margin-top: 10px;
       padding: 12px;
       border: 1px solid #e2e8f0;
