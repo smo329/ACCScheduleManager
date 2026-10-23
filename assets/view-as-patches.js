@@ -132,12 +132,12 @@
     }
 
     // Capture-phase guard: in view mode, no claim, publish, remove,
-    // submit-week or topbar My Schedule click can reach its handler.
+    // submit-quarter or topbar My Schedule click can reach its handler.
     document.addEventListener("click", event => {
         if (!window.viewAsActive) return;
         const target = event.target;
         if (!target || typeof target.closest !== "function") return;
-        if (target.closest(".claim-open-shift, .cancel-open-claim, .toggle-open-shift, .delete-open-shift, #submitWeekButton, #myScheduleTopButton, #publishOpenCandidates")) {
+        if (target.closest(".claim-open-shift, .cancel-open-claim, .toggle-open-shift, .delete-open-shift, #submitQuarterButton, #myScheduleTopButton, #publishOpenCandidates")) {
             event.preventDefault();
             event.stopPropagation();
             showBlockedMessage();
