@@ -100,18 +100,19 @@
         });
     }
 
-    async function saveLeave(userId, dateKey, vacation, professional, tdl) {
+    async function saveLeave(userId, dateKey, vacation, professional, tdl, reportError) {
+        const report = typeof reportError === "function" ? reportError : showError;
         const values = [vacation, professional, tdl].map(Number);
 
         if (values.some(v => !Number.isInteger(v) || v < 0 || v > 12)) {
-            showError("Leave must be entered in whole hours from 0–12.");
+            report("Leave must be entered in whole hours from 0–12.");
             return false;
         }
 
         const leaveHours = values.reduce((a, b) => a + b, 0);
 
         if (leaveHours > 12) {
-            showError("Total leave for one day cannot exceed 12 hours.");
+            report("Total leave for one day cannot exceed 12 hours.");
             return false;
         }
 
@@ -121,7 +122,7 @@
         const adminPiece = (typeof window.getAdminHours === "function" ? window.getAdminHours(userId, dateKey) : 0);
         const effectiveWorked = (worked === null ? 0 : worked) + adminPiece;
         if (scheduleCode !== "12" && leaveHours > 12 - effectiveWorked) {
-            showError(`Worked hours plus Admin plus leave cannot exceed 12 credited hours for the day. Maximum leave here is ${12 - effectiveWorked} hours.`);
+            report(`Worked hours plus Admin plus leave cannot exceed 12 credited hours for the day. Maximum leave here is ${12 - effectiveWorked} hours.`);
             return false;
         }
 
@@ -140,7 +141,7 @@
 
         if (error) {
             console.error(error);
-            showError("Leave hours could not be saved: " + error.message);
+            report("Leave hours could not be saved: " + error.message);
             return false;
         }
 
@@ -172,6 +173,7 @@
                     <label>TDL<input id="flexTdl" type="number" min="0" max="12" step="1"></label>
                 </div>
                 <div id="flexLeaveTotal" class="flex-leave-total"></div>
+                <div id="flexLeaveMessage" class="flex-leave-message" style="display:none"></div>
                 <div class="flex-leave-actions">
                     <button id="flexLeaveCancel" class="modal-button cancel-button" type="button">Cancel</button>
                     <button id="flexLeaveSave" class="modal-button save-button" type="button">Save Leave</button>
@@ -196,11 +198,17 @@
         pl.value = l.professional;
         tdl.value = l.tdl;
 
+        const message = overlay.querySelector("#flexLeaveMessage");
+        const clearMessage = () => { if (message) { message.textContent = ""; message.style.display = "none"; } };
+        const showModalMessage = (msg) => { if (message) { message.textContent = msg; message.style.display = "block"; } };
+        clearMessage();
+
         const update = () => {
             const sum = Number(vl.value || 0) +
                 Number(pl.value || 0) +
                 Number(tdl.value || 0);
             total.textContent = `Leave entered: ${sum} / 12 hours`;
+            clearMessage();
         };
 
         [vl, pl, tdl].forEach(input => input.oninput = update);
@@ -215,7 +223,8 @@
                 dateKey,
                 vl.value,
                 pl.value,
-                tdl.value
+                tdl.value,
+                showModalMessage
             )) {
                 overlay.classList.remove("show");
                 renderSchedule();
@@ -342,6 +351,7 @@
             .flex-leave-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
             .leave-week-warning{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700;font-size:12px}
             .leave-week-warning button{border:1px solid #d97706;background:#fff7ed;color:#9a3412;border-radius:5px;padding:3px 7px;cursor:pointer;font-weight:700}
+            .flex-leave-message{display:none;margin:10px 0 0;padding:10px 12px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:13px;font-weight:700;line-height:1.4}
             .schedule-cell{min-width:66px!important}.hours-column,.hours-cell{min-width:62px!important;width:62px!important}
             .schedule-hours-input{width:100%;text-align:center}.schedule-leave-display,.schedule-leave-value{background:#fef3c7!important;color:#92400e!important;font-weight:700}
             .flex-admin-button{display:block;width:100%;margin-top:3px;padding:2px 3px;border:0;border-radius:4px;background:transparent;color:#64748b;font-size:10px;line-height:1.15;cursor:pointer}.flex-admin-button.is-admin{background:#dbeafe;color:#1e40af;font-weight:700}.schedule-admin-value{background:#dbeafe!important;color:#1e40af!important;font-weight:700}
