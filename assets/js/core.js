@@ -296,8 +296,11 @@ function showLogin() {
 
     document
         .getElementById("app")
-        .style.display =
-            "none";
+        .style.setProperty(
+            "display",
+            "none",
+            "important"
+        );
 
     document
         .getElementById("loginScreen")
@@ -315,8 +318,9 @@ function showApp() {
 
     document
         .getElementById("app")
-        .style.display =
-            "block";
+        .style.removeProperty(
+            "display"
+        );
 }
 
 /* =========================================================
