@@ -596,6 +596,12 @@
         input.addEventListener("change", async function () {
             const raw = input.value.trim().toUpperCase();
             const originalValue = currentValue;
+            // Was assigned without a declaration, which throws a
+            // ReferenceError in this strict-mode file and aborted the
+            // save before it ran: typed hours never saved, the location
+            // dropdown never appeared, and the next re-render wiped the
+            // typed value back to blank.
+            let selectedValue;
 
             // Leave codes are no longer schedule codes: leave is edited
             // with the + Leave button below the cell, not here.
