@@ -1922,10 +1922,18 @@ function getScheduleWorkSite(
     /*
      * Existing 12-hour shifts created before the
      * work_site column was added automatically count
-     * at the person's primary clinic.
+     * at the person's primary clinic. The same applies to
+     * typed partial shifts: their saved work_site must be
+     * read back, or the location dropdown resets to the
+     * primary clinic on every re-render and a switch to
+     * the other clinic appears to switch itself back.
      */
     if (
-        entry.code === "12"
+        entry.code === "12" ||
+        (
+            Number.isFinite(Number(entry.code)) &&
+            Number(entry.code) > 0
+        )
     ) {
         return (
             entry.work_site ||
