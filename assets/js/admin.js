@@ -144,14 +144,6 @@ async function saveAccountInfo() {
             .value
             .trim();
 
-    const email =
-        document
-            .getElementById(
-                "accountEmail"
-            )
-            .value
-            .trim();
-
     const button =
         document.getElementById(
             "saveAccountInfoButton"
@@ -159,11 +151,10 @@ async function saveAccountInfo() {
 
     if (
         !firstName ||
-        !lastName ||
-        !email
+        !lastName
     ) {
         showAccountError(
-            "First name, last name, and email are required."
+            "First name and last name are required."
         );
 
         return;
@@ -208,38 +199,6 @@ async function saveAccountInfo() {
         }
 
 
-        let emailChanged =
-            false;
-
-        if (
-            email.toLowerCase() !==
-            String(
-                currentUser.email || ""
-            ).toLowerCase()
-        ) {
-
-            const {
-                error: emailError
-            } =
-                await supabaseClient
-                    .auth
-                    .updateUser({
-                        email
-                    });
-
-            if (
-                emailError
-            ) {
-                throw new Error(
-                    emailError.message
-                );
-            }
-
-            emailChanged =
-                true;
-        }
-
-
         currentProfile.first_name =
             firstName;
 
@@ -280,9 +239,7 @@ async function saveAccountInfo() {
         renderSchedule();
 
         /*
-         * Refresh Auth state. If Secure Email Change
-         * is enabled, the old email can remain here
-         * until the confirmation process is completed.
+         * Refresh Auth state.
          */
         const {
             data: userData
@@ -299,25 +256,9 @@ async function saveAccountInfo() {
                 userData.user;
         }
 
-        document
-            .getElementById(
-                "accountEmail"
-            )
-            .value =
-                currentUser.email ||
-                email;
-
-        if (
-            emailChanged
-        ) {
-            showAccountMessage(
-                "Your name was updated. Supabase may require confirmation of the email change. Check your current and new email inboxes for confirmation messages."
-            );
-        } else {
-            showAccountMessage(
-                "Your account information was updated."
-            );
-        }
+        showAccountMessage(
+            "Your account information was updated."
+        );
 
     } catch (
         error
