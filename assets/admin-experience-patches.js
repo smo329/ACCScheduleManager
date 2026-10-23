@@ -225,8 +225,8 @@
   }
 })();
 (function () {
-  if (!document.querySelector('script[src="assets/account-request-patches.js"]')) {
-    const script = document.createElement("script"); script.src = "assets/account-request-patches.js"; script.defer = false; document.body.appendChild(script);
+  if (!document.querySelector('script[src="assets/account-request-patches.js?v=20261023-1"]')) {
+    const script = document.createElement("script"); script.src = "assets/account-request-patches.js?v=20261023-1"; script.defer = false; document.body.appendChild(script);
   }
 })();
 (function () {
