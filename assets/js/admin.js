@@ -446,7 +446,7 @@ async function changeOwnPassword() {
    ADMIN
 ========================================================= */
 
-function openAdmin() {
+async function openAdmin() {
 
     if (
         !currentProfile ||
@@ -454,6 +454,14 @@ function openAdmin() {
         "admin"
     ) {
         return;
+    }
+
+    if (
+        adminSchedulingPeriod
+    ) {
+        await ensureAccessRowsForPeriod(
+            adminSchedulingPeriod.id
+        );
     }
 
     document
@@ -525,6 +533,26 @@ function renderPeopleList() {
         );
 
     container.innerHTML = "";
+
+    if (
+        adminSchedulingPeriod
+    ) {
+
+        const quarterNote =
+            document.createElement(
+                "div"
+            );
+
+        quarterNote.style.cssText =
+            "color:#475569;font-size:13px;margin-bottom:12px;";
+
+        quarterNote.innerHTML =
+            `Open/Close Picks buttons below apply to: <strong>${escapeHtml(adminSchedulingPeriod.name)}</strong> — use the button's quarter picker to act on a different quarter.`;
+
+        container.appendChild(
+            quarterNote
+        );
+    }
 
     if (
         profiles.length === 0
