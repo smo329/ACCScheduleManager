@@ -110,7 +110,7 @@ function renderAdminRail(rail){
 
 function renderPersonalRail(rail){
  const title=isExternal()?'My Additional Shifts':'My Schedule';
- rail.innerHTML=`<section class="rail-card"><div class="rail-title">${esc(title)}</div><div class="rail-personal-stat">40</div><div class="rail-personal-label">weekly target hours</div><button class="rail-primary" id="railMySchedule">Open ${esc(title)}</button></section>${isExternal()?'':pickingCardHtml()}<section class="rail-card"><div class="rail-title">Quick Actions</div><div id="railQuickActions"></div></section><section class="rail-card"><div class="rail-title">Need something?</div><div class="rail-subtle">Use Notifications to see scheduling-open alerts and newly published Additional Shifts.</div><button class="rail-primary" id="railNotifications">Open Notifications</button></section>`;
+ rail.innerHTML=`<section class="rail-card"><div class="rail-title">${esc(title)}</div><div class="rail-personal-stat">40</div><div class="rail-personal-label">weekly target hours</div><button class="rail-primary" id="railMySchedule">View ${esc(title)}</button></section>${isExternal()?'':pickingCardHtml()}<section class="rail-card"><div class="rail-title">Quick Actions</div><div id="railQuickActions"></div></section><section class="rail-card"><div class="rail-title">Need something?</div><div class="rail-subtle">Use Notifications to see scheduling-open alerts and newly published Additional Shifts.</div><button class="rail-primary" id="railNotifications">Open Notifications</button></section>`;
  rail.querySelector('#railMySchedule')?.addEventListener('click',()=>window.openMySchedule?.());
  bindPickingCard(rail);
  rail.querySelector('#railNotifications')?.addEventListener('click',()=>window.openNotificationCenter?.());
