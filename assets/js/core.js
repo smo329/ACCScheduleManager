@@ -237,6 +237,27 @@ async function logout() {
 
     await supabaseClient.auth.signOut();
 
+    try {
+        if (
+            window.viewAsActive &&
+            typeof window.exitViewAs ===
+                "function"
+        ) {
+            window.exitViewAs();
+        }
+    } catch (_) {}
+
+    document
+        .querySelectorAll(
+            ".modal-overlay.show, .modal.show"
+        )
+        .forEach(
+            element =>
+                element.classList.remove(
+                    "show"
+                )
+        );
+
     currentUser = null;
     currentProfile = null;
 
