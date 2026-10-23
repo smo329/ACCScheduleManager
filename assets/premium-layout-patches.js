@@ -1,7 +1,7 @@
 /* ACC Schedule Manager - premium app shell */
 (function(){
 'use strict';
-const VERSION='2026.08.14.3';
+const VERSION='2026.10.23.1';
 console.info(`[ACC Schedule Manager] premium layout loaded: ${VERSION}`);
 function role(){try{return currentProfile?.role||null}catch(_){return null}}
 function isAdmin(){return role()==='admin'}
@@ -9,7 +9,7 @@ function isManager(){return role()==='manager'}
 function isEmployee(){return role()==='employee'}
 function isExternal(){return role()==='external'}
 function closeSidebar(){document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show')}
-function openSidebar(){if(window.innerWidth>900)return;document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
+function openSidebar(){closeUserMenu();if(window.innerWidth>900)return;document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
 function invoke(fn){closeSidebar();try{fn?.()}catch(e){console.warn(e)}}
 function actions(){
  const common=[
@@ -45,12 +45,7 @@ function actions(){
   {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
   {section:'Management',id:'navManagerAdditional',icon:'＋',label:'Additional Shifts',show:isManager(),run:()=>window.openOpenShifts?.()},
  ];
- const system=[
-  {section:'System',id:'navNotifications',icon:'♢',label:'Notifications',show:true,run:()=>window.openNotificationCenter?.()},
-  {section:'System',id:'navAccount',icon:'⚙',label:'Account Settings',show:true,run:()=>window.openAccountManager?.()},
-  {section:'System',id:'navSignOut',icon:'↪',label:'Sign Out',show:true,run:()=>window.logout?.()}
- ];
- return [...common,...admin,...manager,...system].filter(x=>x.show!==false);
+ return [...common,...admin,...manager].filter(x=>x.show!==false);
 }
 function suppressLegacyHeaderControls(){
  const holder=document.querySelector('.topbar-user');if(!holder)return;
@@ -135,13 +130,82 @@ function renderDashboardStrip(){
  cards.forEach(card=>{const el=document.createElement('button');el.type='button';el.className='acc-stat-card acc-stat-card-action';el.innerHTML=`<div class="acc-stat-icon">${card.icon}</div><div class="acc-stat-copy"><div class="acc-stat-label">${card.label}</div><div class="acc-stat-value">${card.value}</div><div class="acc-stat-sub">${card.sub}</div></div><span class="acc-stat-arrow">›</span>`;el.onclick=()=>invoke(card.run);strip.appendChild(el)});
 }
 function updateIssueBadge(){const b=document.getElementById('accIssuesNavBadge');if(!b)return;const n=Number(window.accScheduleIssuesSummary?.count||0);b.textContent=n>99?'99+':String(n);b.style.display=n?'inline-flex':'none'}
-function refresh(){ensureShell();renderSidebar();ensureDashboardStrip();updateIssueBadge();suppressLegacyHeaderControls()}
+function ensureUserMenuStyles(){
+ if(document.getElementById('accUserMenuStyles'))return;
+ const st=document.createElement('style');st.id='accUserMenuStyles';
+ st.textContent=`#accUserMenu{position:fixed;z-index:30000;min-width:230px;background:#fff;border:1px solid #d8e2ef;border-radius:13px;box-shadow:0 18px 45px rgba(10,34,70,.20);padding:7px;display:none}#accUserMenu.open{display:block}#accUserMenuHeader{padding:10px 12px 9px;border-bottom:1px solid #e2e8f0;margin-bottom:7px}#accUserMenuName{font-weight:800;color:#15355f;font-size:14px}#accUserMenuRole{font-size:11px;color:#66768e;margin-top:2px}.acc-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:11px 12px;font-size:14px;font-weight:650;color:#17365d;cursor:pointer}.acc-user-menu-item:hover{background:#eef5ff;color:#174e96}`;
+ document.head.appendChild(st);
+}
+function ensureUserMenu(){
+ ensureUserMenuStyles();
+ let menu=document.getElementById('accUserMenu');
+ if(menu)return menu;
+ menu=document.createElement('div');menu.id='accUserMenu';menu.setAttribute('role','menu');
+ menu.innerHTML=`<div id="accUserMenuHeader"><div id="accUserMenuName"></div><div id="accUserMenuRole"></div></div><button type="button" class="acc-user-menu-item" id="accUserMenuAccount"><span>\u2699</span><span>Account Settings</span></button><button type="button" class="acc-user-menu-item" id="accUserMenuSignOut"><span>\u21aa</span><span>Sign Out</span></button>`;
+ document.body.appendChild(menu);
+ document.getElementById('accUserMenuAccount').onclick=()=>{closeUserMenu();window.openAccountManager?.();};
+ document.getElementById('accUserMenuSignOut').onclick=()=>{closeUserMenu();window.logout?.();};
+ return menu;
+}
+function userMenuRoleLabel(){
+ try{
+  const r=currentProfile?.role;
+  if(r==='admin')return 'Administrator';
+  if(r==='manager')return 'Manager';
+  if(r==='employee')return 'Employee';
+  if(r==='external')return 'External Worker';
+ }catch(_){}
+ return '';
+}
+function openUserMenu(){
+ if(!currentProfile)return;
+ const trigger=document.getElementById('premiumProfile');if(!trigger)return;
+ const menu=ensureUserMenu();
+ try{
+  document.getElementById('accUserMenuName').textContent=(typeof getProfileName==='function'?getProfileName(currentProfile):'');
+  document.getElementById('accUserMenuRole').textContent=userMenuRoleLabel();
+ }catch(_){}
+ menu.classList.add('open');
+ const rect=trigger.getBoundingClientRect();
+ const h=menu.offsetHeight;
+ let top=rect.bottom+8;
+ if(top+h>window.innerHeight-8)top=Math.max(8,rect.top-h-8);
+ menu.style.top=top+'px';
+ menu.style.left='auto';
+ menu.style.right=Math.max(8,window.innerWidth-rect.right)+'px';
+ trigger.setAttribute('aria-expanded','true');
+}
+function closeUserMenu(){
+ document.getElementById('accUserMenu')?.classList.remove('open');
+ document.getElementById('premiumProfile')?.setAttribute('aria-expanded','false');
+}
+function toggleUserMenu(){
+ const menu=document.getElementById('accUserMenu');
+ if(menu&&menu.classList.contains('open'))closeUserMenu();else openUserMenu();
+}
+function markUserMenuTrigger(){
+ const t=document.getElementById('premiumProfile');if(!t)return;
+ t.style.cursor='pointer';
+ t.setAttribute('role','button');
+ t.setAttribute('tabindex','0');
+ t.setAttribute('aria-haspopup','true');
+ if(!t.getAttribute('aria-expanded'))t.setAttribute('aria-expanded','false');
+}
+function handleUserMenuDocumentClick(e){
+ const trigger=e.target&&e.target.closest?e.target.closest('#premiumProfile'):null;
+ if(trigger){toggleUserMenu();return;}
+ if(e.target&&e.target.closest&&e.target.closest('#accUserMenu'))return;
+ closeUserMenu();
+}
+function refresh(){ensureShell();renderSidebar();ensureDashboardStrip();updateIssueBadge();suppressLegacyHeaderControls();markUserMenuTrigger()}
 setTimeout(refresh,0);setTimeout(refresh,300);setTimeout(refresh,700);setTimeout(refresh,1800);
-window.addEventListener('resize',()=>{ensureMobileButton();suppressLegacyHeaderControls();if(window.innerWidth>900)closeSidebar()});
+window.addEventListener('resize',()=>{closeUserMenu();ensureMobileButton();suppressLegacyHeaderControls();if(window.innerWidth>900)closeSidebar()});
 if(typeof window.updateUserHeader==='function'){const old=window.updateUserHeader;window.updateUserHeader=function(...args){const r=old.apply(this,args);setTimeout(refresh,0);setTimeout(suppressLegacyHeaderControls,80);return r}}
 if(typeof window.renderSchedule==='function'){const old=window.renderSchedule;window.renderSchedule=function(...args){const r=old.apply(this,args);setTimeout(renderDashboardStrip,0);return r}}
 const headerObserver=new MutationObserver(()=>setTimeout(suppressLegacyHeaderControls,0));
 setTimeout(()=>{const h=document.querySelector('.topbar-user');if(h)headerObserver.observe(h,{childList:true,subtree:false})},0);
+document.addEventListener('click',handleUserMenuDocumentClick);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeUserMenu();return;}const t=e.target&&e.target.closest?e.target.closest('#premiumProfile'):null;if(t&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleUserMenu();}});
 window.refreshPremiumLayout=refresh;
 window.renderPremiumDashboardStrip=renderDashboardStrip;
 })();
