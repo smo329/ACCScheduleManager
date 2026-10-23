@@ -488,7 +488,7 @@ function renderPeopleList() {
             "color:#475569;font-size:13px;margin-bottom:12px;";
 
         quarterNote.innerHTML =
-            `Open/Close Picks buttons below apply to: <strong>${escapeHtml(adminSchedulingPeriod.name)}</strong> — use the button's quarter picker to act on a different quarter.`;
+            `Change Picks buttons below apply to: <strong>${escapeHtml(adminSchedulingPeriod.name)}</strong> — use the button's quarter picker to act on a different quarter.`;
 
         container.appendChild(
             quarterNote
@@ -515,6 +515,9 @@ function renderPeopleList() {
 
             row.className =
                 "person-card";
+
+            row.dataset.userId =
+                profile.id;
 
             const name =
                 document.createElement(
@@ -721,9 +724,7 @@ function renderPeopleList() {
                 );
 
                 accessButton.textContent =
-                    isOpen
-                        ? "Close Picks"
-                        : "Open Picks";
+                    "Change Picks";
 
                 accessButton.onclick =
                     function() {
