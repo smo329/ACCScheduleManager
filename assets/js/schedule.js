@@ -76,6 +76,78 @@ function renderSchedule() {
         "Fountain Court",
         "fountainBody"
     );
+
+    orderClinicPanelsForViewer();
+}
+
+
+/*
+ * Stack order: the viewer's own clinic panel goes on top and
+ * the other clinic below. Fountain Court viewers get Fountain
+ * Court first; everyone else (including admins without a
+ * Fountain Court clinic) keeps Turfland first, as before.
+ * Idempotent: re-rendering the schedule re-applies the same
+ * order instead of flipping the panels back and forth.
+ */
+function orderClinicPanelsForViewer() {
+
+    const grid =
+        document.querySelector(
+            ".clinic-grid"
+        );
+
+    if (
+        !grid
+    ) {
+
+        return;
+    }
+
+    const desired =
+        currentProfile &&
+        currentProfile.clinic_site ===
+            "Fountain Court"
+            ? "Fountain Court"
+            : "Turfland";
+
+    const panels =
+        Array.from(
+            grid.querySelectorAll(
+                ".clinic-panel"
+            )
+        );
+
+    const first =
+        panels.find(
+            panel => {
+
+                const title =
+                    panel.querySelector(
+                        ".clinic-title"
+                    );
+
+                return Boolean(
+                    title &&
+                    title.textContent
+                        .trim()
+                        .startsWith(
+                            desired
+                        )
+                );
+            }
+        );
+
+    if (
+        first &&
+        grid.firstElementChild !==
+            first
+    ) {
+
+        grid.insertBefore(
+            first,
+            grid.firstChild
+        );
+    }
 }
 
 
