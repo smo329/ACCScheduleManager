@@ -209,8 +209,24 @@
 
       if (currentProfile) currentProfile.username = data.username;
 
+      let emailNote = "";
+      const emailInput = document.getElementById("accountEmail");
+      const newEmail = emailInput ? emailInput.value.trim() : "";
+      if (newEmail && newEmail.toLowerCase() !== String(currentUser.email || "").toLowerCase()) {
+        const { error: emailError } = await supabaseClient.auth.updateUser({ email: newEmail });
+        if (emailError) {
+          if (typeof showAccountError === "function") {
+            showAccountError(`Username saved, but the email could not be changed: ${emailError.message}`);
+          }
+        } else {
+          emailNote = " Supabase may require confirmation of the email change. Check your current and new email inboxes for confirmation messages.";
+          const { data: userData } = await supabaseClient.auth.getUser();
+          if (userData && userData.user) currentUser = userData.user;
+        }
+      }
+
       if (typeof showAccountMessage === "function") {
-        showAccountMessage(`Username saved. You can now sign in as ${data.username}.`);
+        showAccountMessage(`Username saved. You can now sign in as ${data.username}.${emailNote}`);
       }
 
     } catch (error) {
