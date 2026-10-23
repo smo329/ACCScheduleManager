@@ -133,7 +133,7 @@ function updateIssueBadge(){const b=document.getElementById('accIssuesNavBadge')
 function ensureUserMenuStyles(){
  if(document.getElementById('accUserMenuStyles'))return;
  const st=document.createElement('style');st.id='accUserMenuStyles';
- st.textContent=`#accUserMenu{position:fixed;z-index:30000;min-width:230px;background:#fff;border:1px solid #d8e2ef;border-radius:13px;box-shadow:0 18px 45px rgba(10,34,70,.20);padding:7px;display:none}#accUserMenu.open{display:block}#accUserMenuHeader{padding:10px 12px 9px;border-bottom:1px solid #e2e8f0;margin-bottom:7px}#accUserMenuName{font-weight:800;color:#15355f;font-size:14px}#accUserMenuRole{font-size:11px;color:#66768e;margin-top:2px}.acc-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:11px 12px;font-size:14px;font-weight:650;color:#17365d;cursor:pointer}.acc-user-menu-item:hover{background:#eef5ff;color:#174e96}`;
+ st.textContent=`#accUserMenu{position:fixed;z-index:30000;min-width:230px;background:#fff;border:1px solid #d8e2ef;border-radius:13px;box-shadow:0 18px 45px rgba(10,34,70,.20);padding:7px;display:none}#accUserMenu.open{display:block}#accUserMenuHeader{padding:10px 12px 9px;border-bottom:1px solid #e2e8f0;margin-bottom:7px}#accUserMenuName{font-weight:800;color:#15355f;font-size:14px}#accUserMenuRole{font-size:11px;color:#66768e;margin-top:2px}.acc-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;padding:11px 12px;font-size:14px;font-weight:650;color:#17365d;cursor:pointer}.acc-user-menu-item:hover{background:#eef5ff;color:#174e96}#premiumProfile{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:999px!important;padding:3px 12px 3px 3px!important;box-shadow:0 2px 8px rgba(0,0,0,.12)!important;gap:8px!important}#premiumProfile:hover{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.28)!important}#premiumProfile::after{content:'';width:7px;height:7px;color:#b9c9e3;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .15s;flex:none}#premiumProfile[aria-expanded="true"]::after{transform:rotate(-135deg) translateY(-2px)}`;
  document.head.appendChild(st);
 }
 function ensureUserMenu(){
@@ -184,6 +184,7 @@ function toggleUserMenu(){
  if(menu&&menu.classList.contains('open'))closeUserMenu();else openUserMenu();
 }
 function markUserMenuTrigger(){
+ ensureUserMenuStyles();
  const t=document.getElementById('premiumProfile');if(!t)return;
  t.style.cursor='pointer';
  t.setAttribute('role','button');
