@@ -10,8 +10,10 @@
     const THEME_KEY_PREFIX = "acc_schedule_theme:";
 
     function themeKeyForUser() {
-        return window.currentUser && window.currentUser.id
-            ? THEME_KEY_PREFIX + window.currentUser.id
+        const user =
+            typeof currentUser !== "undefined" ? currentUser : null;
+        return user && user.id
+            ? THEME_KEY_PREFIX + user.id
             : null;
     }
 
@@ -34,7 +36,10 @@
         "cotton",
         "sunset",
         "bubblegum",
-        "ocean"
+        "ocean",
+        "cherry",
+        "lime",
+        "lemonade"
     ];
 
     const THEME_CLASSES = [
@@ -45,7 +50,10 @@
         "acc-theme-cotton",
         "acc-theme-sunset",
         "acc-theme-bubblegum",
-        "acc-theme-ocean"
+        "acc-theme-ocean",
+        "acc-theme-cherry",
+        "acc-theme-lime",
+        "acc-theme-lemonade"
     ];
 
     function applyThemeClasses(theme) {
@@ -207,7 +215,10 @@
             ["cotton", "Cotton Candy", "linear-gradient(135deg,#f9a8d4,#7dd3fc)"],
             ["sunset", "Sunset", "linear-gradient(135deg,#fdba74,#f472b6)"],
             ["bubblegum", "Bubblegum", "linear-gradient(135deg,#f9a8d4,#c4b5fd)"],
-            ["ocean", "Ocean", "linear-gradient(135deg,#7dd3fc,#22d3ee)"]
+            ["ocean", "Ocean", "linear-gradient(135deg,#7dd3fc,#22d3ee)"],
+            ["cherry", "Cherry", "linear-gradient(135deg,#fca5a5,#ef4444)"],
+            ["lime", "Lime", "linear-gradient(135deg,#bef264,#84cc16)"],
+            ["lemonade", "Lemonade", "linear-gradient(135deg,#fde047,#f59e0b)"]
         ];
 
         const saved = getSavedTheme();
@@ -798,9 +809,9 @@
 
             .account-appearance-card {
                 display:flex;
-                justify-content:space-between;
-                align-items:center;
-                gap:16px;
+                flex-direction:column;
+                align-items:stretch;
+                gap:12px;
                 padding:14px;
                 border:1px solid #e2e8f0;
                 border-radius:8px;
@@ -1005,7 +1016,7 @@
 
             .account-theme-options {
                 display:grid;
-                grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+                grid-template-columns:repeat(3,1fr);
                 gap:8px;
                 margin-top:12px;
             }
@@ -1051,6 +1062,12 @@
                 font-weight:700;
                 font-size:12px;
                 color:#18365f;
+            }
+
+            @media (max-width:480px) {
+                .account-theme-options {
+                    grid-template-columns:repeat(2,1fr);
+                }
             }
 
             .acc-theme-forest .topbar {
@@ -1373,6 +1390,144 @@
 
             .acc-theme-ocean .acc-sidebar-footer {
                 color:#c0d8e4 !important;
+            }
+
+            .acc-theme-cherry .topbar {
+                background:linear-gradient(110deg,#7f1d1d 0%,#dc2626 100%) !important;
+            }
+
+            .acc-theme-cherry .topbar-title:before {
+                background:linear-gradient(135deg,#fca5a5,#f87171) !important;
+            }
+
+            .acc-theme-cherry .clinic-title {
+                background:linear-gradient(110deg,#450a0a,#991b1b) !important;
+            }
+
+            .acc-theme-cherry .workflow-button.primary,
+            .acc-theme-cherry .save-button,
+            .acc-theme-cherry .login-button,
+            .acc-theme-cherry .rail-primary {
+                background:linear-gradient(135deg,#dc2626,#ef4444) !important;
+                border-color:#b91c1c !important;
+            }
+
+            .acc-theme-cherry .quarter-week-button.active {
+                background:linear-gradient(135deg,#dc2626,#ef4444) !important;
+                border-color:#b91c1c !important;
+            }
+
+            .acc-theme-cherry .premium-avatar {
+                background:linear-gradient(135deg,#fca5a5,#ef4444) !important;
+            }
+
+            .acc-theme-cherry .acc-sidebar {
+                background:linear-gradient(180deg,#450a0a 0%,#7f1d1d 60%,#991b1b 100%) !important;
+            }
+
+            .acc-theme-cherry .acc-sidebar-label {
+                color:#fecaca !important;
+            }
+
+            .acc-theme-cherry .acc-nav-item.active {
+                background:linear-gradient(135deg,#dc2626,#f87171) !important;
+                box-shadow:0 8px 18px rgba(220,38,38,.35) !important;
+            }
+
+            .acc-theme-cherry .acc-sidebar-footer {
+                color:#f0c8c0 !important;
+            }
+
+            .acc-theme-lime .topbar {
+                background:linear-gradient(110deg,#365314 0%,#65a30d 100%) !important;
+            }
+
+            .acc-theme-lime .topbar-title:before {
+                background:linear-gradient(135deg,#bef264,#a3e635) !important;
+            }
+
+            .acc-theme-lime .clinic-title {
+                background:linear-gradient(110deg,#1a2e05,#3f6212) !important;
+            }
+
+            .acc-theme-lime .workflow-button.primary,
+            .acc-theme-lime .save-button,
+            .acc-theme-lime .login-button,
+            .acc-theme-lime .rail-primary {
+                background:linear-gradient(135deg,#65a30d,#84cc16) !important;
+                border-color:#4d7c0f !important;
+            }
+
+            .acc-theme-lime .quarter-week-button.active {
+                background:linear-gradient(135deg,#65a30d,#84cc16) !important;
+                border-color:#4d7c0f !important;
+            }
+
+            .acc-theme-lime .premium-avatar {
+                background:linear-gradient(135deg,#bef264,#a3e635) !important;
+            }
+
+            .acc-theme-lime .acc-sidebar {
+                background:linear-gradient(180deg,#1a2e05 0%,#365314 60%,#4d7c0f 100%) !important;
+            }
+
+            .acc-theme-lime .acc-sidebar-label {
+                color:#d9f99d !important;
+            }
+
+            .acc-theme-lime .acc-nav-item.active {
+                background:linear-gradient(135deg,#65a30d,#a3e635) !important;
+                box-shadow:0 8px 18px rgba(101,163,13,.35) !important;
+            }
+
+            .acc-theme-lime .acc-sidebar-footer {
+                color:#d8e4c0 !important;
+            }
+
+            .acc-theme-lemonade .topbar {
+                background:linear-gradient(110deg,#78350f 0%,#b45309 100%) !important;
+            }
+
+            .acc-theme-lemonade .topbar-title:before {
+                background:linear-gradient(135deg,#fcd34d,#fbbf24) !important;
+            }
+
+            .acc-theme-lemonade .clinic-title {
+                background:linear-gradient(110deg,#451a03,#92400e) !important;
+            }
+
+            .acc-theme-lemonade .workflow-button.primary,
+            .acc-theme-lemonade .save-button,
+            .acc-theme-lemonade .login-button,
+            .acc-theme-lemonade .rail-primary {
+                background:linear-gradient(135deg,#d97706,#b45309) !important;
+                border-color:#92400e !important;
+            }
+
+            .acc-theme-lemonade .quarter-week-button.active {
+                background:linear-gradient(135deg,#d97706,#b45309) !important;
+                border-color:#92400e !important;
+            }
+
+            .acc-theme-lemonade .premium-avatar {
+                background:linear-gradient(135deg,#fcd34d,#f59e0b) !important;
+            }
+
+            .acc-theme-lemonade .acc-sidebar {
+                background:linear-gradient(180deg,#451a03 0%,#78350f 60%,#92400e 100%) !important;
+            }
+
+            .acc-theme-lemonade .acc-sidebar-label {
+                color:#fde68a !important;
+            }
+
+            .acc-theme-lemonade .acc-nav-item.active {
+                background:linear-gradient(135deg,#d97706,#f59e0b) !important;
+                box-shadow:0 8px 18px rgba(217,119,6,.35) !important;
+            }
+
+            .acc-theme-lemonade .acc-sidebar-footer {
+                color:#f0e0c0 !important;
             }
             `;
 
