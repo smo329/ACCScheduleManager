@@ -533,8 +533,7 @@
                     button => {
                         if (
                             [
-                                "Open Picks",
-                                "Close Picks"
+                                "Change Picks"
                             ].includes(
                                 button.textContent.trim()
                             )
