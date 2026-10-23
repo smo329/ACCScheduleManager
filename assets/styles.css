@@ -929,7 +929,7 @@
             padding: 14px;
             margin-bottom: 10px;
             display: grid;
-            grid-template-columns: minmax(150px,1.5fr) 125px 120px 95px auto;
+            grid-template-columns: minmax(150px,1.2fr) 165px 120px 95px auto;
             gap: 12px;
             align-items: center;
         }
@@ -937,6 +937,11 @@
         .person-site {
             font-size: 13px;
             color: #475569;
+            white-space: nowrap;
+        }
+
+        .person-buttons .modal-button {
+            white-space: nowrap;
         }
 
         .status-active {
