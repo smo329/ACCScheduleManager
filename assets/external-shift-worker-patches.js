@@ -157,7 +157,7 @@
 
       if (profile.role !== "employee") {
         card.querySelectorAll("button").forEach(button => {
-          if (["Open Picks", "Close Picks"].includes(button.textContent.trim())) button.remove();
+          if (["Change Picks"].includes(button.textContent.trim())) button.remove();
         });
       }
     });
