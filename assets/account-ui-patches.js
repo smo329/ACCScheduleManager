@@ -7,6 +7,19 @@
 
     const ACCOUNT_UI_VERSION = "2026.08.14.1";
     const THEME_KEY = "acc_schedule_theme";
+    const THEME_KEY_PREFIX = "acc_schedule_theme:";
+
+    function themeKeyForUser() {
+        return window.currentUser && window.currentUser.id
+            ? THEME_KEY_PREFIX + window.currentUser.id
+            : null;
+    }
+
+    function getSavedTheme() {
+        const key = themeKeyForUser();
+        const saved = key ? localStorage.getItem(key) : null;
+        return THEMES.includes(saved) ? saved : "default";
+    }
 
     console.info(
         `[ACC Schedule Manager] account UI patch loaded: ${ACCOUNT_UI_VERSION}`
@@ -18,7 +31,10 @@
         "forest",
         "plum",
         "teal",
-        "cotton"
+        "cotton",
+        "sunset",
+        "bubblegum",
+        "ocean"
     ];
 
     const THEME_CLASSES = [
@@ -26,10 +42,13 @@
         "acc-theme-forest",
         "acc-theme-plum",
         "acc-theme-teal",
-        "acc-theme-cotton"
+        "acc-theme-cotton",
+        "acc-theme-sunset",
+        "acc-theme-bubblegum",
+        "acc-theme-ocean"
     ];
 
-    function applyTheme(theme) {
+    function applyThemeClasses(theme) {
         if (!THEMES.includes(theme)) {
             theme = "default";
         }
@@ -53,11 +72,6 @@
             document.body.classList.add(cls);
         }
 
-        localStorage.setItem(
-            THEME_KEY,
-            theme
-        );
-
         document
             .querySelectorAll(
                 'input[name="accountThemeChoice"]'
@@ -70,13 +84,49 @@
             );
     }
 
+    function applyTheme(theme) {
+        if (!THEMES.includes(theme)) {
+            theme = "default";
+        }
+
+        applyThemeClasses(theme);
+
+        const key = themeKeyForUser();
+        if (key) {
+            localStorage.setItem(key, theme);
+        }
+    }
+
 
     function initializeTheme() {
-        applyTheme(
-            localStorage.getItem(
-                THEME_KEY
-            )
-        );
+        applyThemeClasses("default");
+    }
+
+    if (typeof window.showApp === "function") {
+        const originalShowApp = window.showApp;
+        window.showApp = function (...args) {
+            const result = originalShowApp.apply(this, args);
+            applyTheme(getSavedTheme());
+            return result;
+        };
+    }
+
+    if (typeof window.updateUserHeader === "function") {
+        const originalUpdateUserHeader = window.updateUserHeader;
+        window.updateUserHeader = function (...args) {
+            const result = originalUpdateUserHeader.apply(this, args);
+            applyTheme(getSavedTheme());
+            return result;
+        };
+    }
+
+    if (typeof window.showLogin === "function") {
+        const originalShowLogin = window.showLogin;
+        window.showLogin = function (...args) {
+            const result = originalShowLogin.apply(this, args);
+            applyThemeClasses("default");
+            return result;
+        };
     }
 
 
@@ -154,13 +204,13 @@
             ["forest", "Forest", "linear-gradient(135deg,#22c55e,#14532d)"],
             ["plum", "Plum", "linear-gradient(135deg,#a78bfa,#5b21b6)"],
             ["teal", "Teal", "linear-gradient(135deg,#5eead4,#0f766e)"],
-            ["cotton", "Cotton Candy", "linear-gradient(135deg,#f9a8d4,#7dd3fc)"]
+            ["cotton", "Cotton Candy", "linear-gradient(135deg,#f9a8d4,#7dd3fc)"],
+            ["sunset", "Sunset", "linear-gradient(135deg,#fdba74,#f472b6)"],
+            ["bubblegum", "Bubblegum", "linear-gradient(135deg,#f9a8d4,#c4b5fd)"],
+            ["ocean", "Ocean", "linear-gradient(135deg,#7dd3fc,#22d3ee)"]
         ];
 
-        const saved =
-            localStorage.getItem(
-                THEME_KEY
-            );
+        const saved = getSavedTheme();
 
         const current =
             THEMES.includes(saved)
@@ -175,7 +225,7 @@
                 </strong>
 
                 <div class="account-settings-help">
-                    Pick a look for the scheduling site on this browser.
+                    Pick a look for your account. Each person keeps their own theme.
                 </div>
             </div>
 
@@ -954,19 +1004,21 @@
             }
 
             .account-theme-options {
-                display:flex;
-                flex-direction:column;
+                display:grid;
+                grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
                 gap:8px;
                 margin-top:12px;
             }
 
             .account-theme-option {
                 display:flex;
+                flex-direction:column;
                 align-items:center;
-                gap:10px;
+                text-align:center;
+                gap:8px;
                 border:1px solid #e2e8f0;
                 border-radius:10px;
-                padding:9px 11px;
+                padding:12px 8px;
                 cursor:pointer;
                 background:#fff;
             }
@@ -976,13 +1028,20 @@
                 box-shadow:0 0 0 3px rgba(59,130,246,.12);
             }
 
+            .account-theme-option:has(input:focus-visible) {
+                outline:2px solid #5b8def;
+                outline-offset:2px;
+            }
+
             .account-theme-option input {
-                accent-color:#174e96;
+                position:absolute;
+                opacity:0;
+                pointer-events:none;
             }
 
             .account-theme-swatch {
-                width:26px;
-                height:26px;
+                width:32px;
+                height:32px;
                 border-radius:50%;
                 flex:none;
                 border:1px solid rgba(0,0,0,.08);
@@ -990,7 +1049,7 @@
 
             .account-theme-name {
                 font-weight:700;
-                font-size:13px;
+                font-size:12px;
                 color:#18365f;
             }
 
@@ -1108,6 +1167,212 @@
 
             .acc-theme-cotton .premium-avatar {
                 background:linear-gradient(135deg,#f472b6,#38bdf8) !important;
+            }
+
+            .acc-theme-sunset .topbar {
+                background:linear-gradient(110deg,#9a3412 0%,#db2777 100%) !important;
+            }
+
+            .acc-theme-sunset .topbar-title:before {
+                background:linear-gradient(135deg,#fdba74,#f472b6) !important;
+            }
+
+            .acc-theme-sunset .clinic-title {
+                background:linear-gradient(110deg,#7c2d12,#9d174d) !important;
+            }
+
+            .acc-theme-sunset .workflow-button.primary,
+            .acc-theme-sunset .save-button,
+            .acc-theme-sunset .login-button,
+            .acc-theme-sunset .rail-primary {
+                background:linear-gradient(135deg,#f97316,#db2777) !important;
+                border-color:#ea580c !important;
+            }
+
+            .acc-theme-sunset .quarter-week-button.active {
+                background:linear-gradient(135deg,#f97316,#db2777) !important;
+                border-color:#ea580c !important;
+            }
+
+            .acc-theme-sunset .premium-avatar {
+                background:linear-gradient(135deg,#fb923c,#ec4899) !important;
+            }
+
+            .acc-theme-bubblegum .topbar {
+                background:linear-gradient(110deg,#be185d 0%,#7c3aed 100%) !important;
+            }
+
+            .acc-theme-bubblegum .topbar-title:before {
+                background:linear-gradient(135deg,#f9a8d4,#c4b5fd) !important;
+            }
+
+            .acc-theme-bubblegum .clinic-title {
+                background:linear-gradient(110deg,#831843,#5b21b6) !important;
+            }
+
+            .acc-theme-bubblegum .workflow-button.primary,
+            .acc-theme-bubblegum .save-button,
+            .acc-theme-bubblegum .login-button,
+            .acc-theme-bubblegum .rail-primary {
+                background:linear-gradient(135deg,#ec4899,#8b5cf6) !important;
+                border-color:#db2777 !important;
+            }
+
+            .acc-theme-bubblegum .quarter-week-button.active {
+                background:linear-gradient(135deg,#ec4899,#8b5cf6) !important;
+                border-color:#db2777 !important;
+            }
+
+            .acc-theme-bubblegum .premium-avatar {
+                background:linear-gradient(135deg,#f472b6,#a78bfa) !important;
+            }
+
+            .acc-theme-ocean .topbar {
+                background:linear-gradient(110deg,#0c4a6e 0%,#0891b2 100%) !important;
+            }
+
+            .acc-theme-ocean .topbar-title:before {
+                background:linear-gradient(135deg,#7dd3fc,#22d3ee) !important;
+            }
+
+            .acc-theme-ocean .clinic-title {
+                background:linear-gradient(110deg,#082f49,#155e75) !important;
+            }
+
+            .acc-theme-ocean .workflow-button.primary,
+            .acc-theme-ocean .save-button,
+            .acc-theme-ocean .login-button,
+            .acc-theme-ocean .rail-primary {
+                background:linear-gradient(135deg,#0284c7,#06b6d4) !important;
+                border-color:#0284c7 !important;
+            }
+
+            .acc-theme-ocean .quarter-week-button.active {
+                background:linear-gradient(135deg,#0284c7,#06b6d4) !important;
+                border-color:#0284c7 !important;
+            }
+
+            .acc-theme-ocean .premium-avatar {
+                background:linear-gradient(135deg,#38bdf8,#22d3ee) !important;
+            }
+
+            .acc-theme-forest .acc-sidebar {
+                background:linear-gradient(180deg,#052e16 0%,#14532d 66%,#166534 100%) !important;
+            }
+
+            .acc-theme-forest .acc-sidebar-label {
+                color:#8fd6a8 !important;
+            }
+
+            .acc-theme-forest .acc-nav-item.active {
+                background:linear-gradient(135deg,#15803d,#22c55e) !important;
+                box-shadow:0 8px 18px rgba(21,128,61,.35) !important;
+            }
+
+            .acc-theme-forest .acc-sidebar-footer {
+                color:#a7c4b0 !important;
+            }
+
+            .acc-theme-plum .acc-sidebar {
+                background:linear-gradient(180deg,#2e1065 0%,#4c1d95 66%,#5b21b6 100%) !important;
+            }
+
+            .acc-theme-plum .acc-sidebar-label {
+                color:#c4b5fd !important;
+            }
+
+            .acc-theme-plum .acc-nav-item.active {
+                background:linear-gradient(135deg,#7c3aed,#a78bfa) !important;
+                box-shadow:0 8px 18px rgba(124,58,237,.35) !important;
+            }
+
+            .acc-theme-plum .acc-sidebar-footer {
+                color:#d8d0f0 !important;
+            }
+
+            .acc-theme-teal .acc-sidebar {
+                background:linear-gradient(180deg,#042f2e 0%,#0f766e 66%,#115e59 100%) !important;
+            }
+
+            .acc-theme-teal .acc-sidebar-label {
+                color:#99f6e4 !important;
+            }
+
+            .acc-theme-teal .acc-nav-item.active {
+                background:linear-gradient(135deg,#14b8a6,#2dd4bf) !important;
+                box-shadow:0 8px 18px rgba(20,184,166,.35) !important;
+            }
+
+            .acc-theme-teal .acc-sidebar-footer {
+                color:#b8e0dc !important;
+            }
+
+            .acc-theme-cotton .acc-sidebar {
+                background:linear-gradient(180deg,#4a044e 0%,#9d174d 55%,#0c4a6e 100%) !important;
+            }
+
+            .acc-theme-cotton .acc-sidebar-label {
+                color:#fbcfe8 !important;
+            }
+
+            .acc-theme-cotton .acc-nav-item.active {
+                background:linear-gradient(135deg,#ec4899,#38bdf8) !important;
+                box-shadow:0 8px 18px rgba(236,72,153,.35) !important;
+            }
+
+            .acc-theme-cotton .acc-sidebar-footer {
+                color:#e8d0e0 !important;
+            }
+
+            .acc-theme-sunset .acc-sidebar {
+                background:linear-gradient(180deg,#431407 0%,#9a3412 60%,#9d174d 100%) !important;
+            }
+
+            .acc-theme-sunset .acc-sidebar-label {
+                color:#fed7aa !important;
+            }
+
+            .acc-theme-sunset .acc-nav-item.active {
+                background:linear-gradient(135deg,#f97316,#ec4899) !important;
+                box-shadow:0 8px 18px rgba(249,115,22,.35) !important;
+            }
+
+            .acc-theme-sunset .acc-sidebar-footer {
+                color:#f0d5c0 !important;
+            }
+
+            .acc-theme-bubblegum .acc-sidebar {
+                background:linear-gradient(180deg,#4a044e 0%,#86198f 55%,#6d28d9 100%) !important;
+            }
+
+            .acc-theme-bubblegum .acc-sidebar-label {
+                color:#f5d0fe !important;
+            }
+
+            .acc-theme-bubblegum .acc-nav-item.active {
+                background:linear-gradient(135deg,#ec4899,#a78bfa) !important;
+                box-shadow:0 8px 18px rgba(236,72,153,.35) !important;
+            }
+
+            .acc-theme-bubblegum .acc-sidebar-footer {
+                color:#e8d0f0 !important;
+            }
+
+            .acc-theme-ocean .acc-sidebar {
+                background:linear-gradient(180deg,#082f49 0%,#0c4a6e 60%,#0891b2 100%) !important;
+            }
+
+            .acc-theme-ocean .acc-sidebar-label {
+                color:#bae6fd !important;
+            }
+
+            .acc-theme-ocean .acc-nav-item.active {
+                background:linear-gradient(135deg,#0284c7,#22d3ee) !important;
+                box-shadow:0 8px 18px rgba(2,132,199,.35) !important;
+            }
+
+            .acc-theme-ocean .acc-sidebar-footer {
+                color:#c0d8e4 !important;
             }
             `;
 
