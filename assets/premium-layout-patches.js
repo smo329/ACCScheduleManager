@@ -26,6 +26,15 @@ function actions(){
   // reuses id navCalendarPrint, so calendar-print's installNav() sees it and skips
   // adding a duplicate.
   {section:'Scheduling',id:'navCalendarPrint',icon:'▤',label:'Calendar & Print',show:true,run:()=>window.openCalendarPrint?.()},
+  // Trade Center was previously appended by trade-center-patches.js (installNav, on
+  // fixed timers and after every refreshPremiumLayout/updateUserHeader). Every
+  // renderSidebar() rebuilds the sidebar from actions() and wipes that appended
+  // button, so during the login/refresh render storm it kept vanishing and
+  // reappearing — the flicker. Making it a first-class action here means
+  // renderSidebar() includes it on every rebuild, in a stable position.
+  // Visibility mirrors trade-center's eligible(): admins, managers and
+  // employees only, never externals, never in view-as mode.
+  {section:'Scheduling',id:'navTradeCenter',icon:'⇄',label:'Trade Center',show:(isAdmin()||isManager()||isEmployee())&&!window.viewAsActive,run:()=>window.openTradeCenter?.()},
  ];
  const admin=[
   // Use the separated modes already defined in admin-experience-patches.js instead of
