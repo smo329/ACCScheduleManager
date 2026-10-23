@@ -906,7 +906,6 @@ async function renderQuarterDashboard() {
                         <th>Employee</th>
                         <th>Clinic</th>
                         <th>Pick Access</th>
-                        <th>12h Shifts</th>
                         <th>40h Weeks</th>
         `;
 
@@ -935,18 +934,6 @@ async function renderQuarterDashboard() {
 
     activeProfiles.forEach(
         profile => {
-
-            const userRows =
-                rowsForUser(
-                    profile.id
-                );
-
-            const shifts12 =
-                userRows.filter(
-                    row =>
-                        row.schedule_code ===
-                            "12"
-                ).length;
 
             const goodWeeks =
                 weekStarts.filter(
@@ -990,10 +977,6 @@ async function renderQuarterDashboard() {
                                 ? "Open"
                                 : "Locked"
                         }
-                    </td>
-
-                    <td>
-                        ${shifts12}
                     </td>
 
                     <td class="${
