@@ -12,45 +12,70 @@
         `[ACC Schedule Manager] account UI patch loaded: ${ACCOUNT_UI_VERSION}`
     );
 
+    const THEMES = [
+        "default",
+        "dark",
+        "forest",
+        "plum",
+        "teal",
+        "cotton"
+    ];
+
+    const THEME_CLASSES = [
+        "acc-dark",
+        "acc-theme-forest",
+        "acc-theme-plum",
+        "acc-theme-teal",
+        "acc-theme-cotton"
+    ];
+
     function applyTheme(theme) {
-        const dark = theme === "dark";
+        if (!THEMES.includes(theme)) {
+            theme = "default";
+        }
 
-        document.documentElement.classList.toggle(
-            "acc-dark",
-            dark
+        THEME_CLASSES.forEach(
+            cls => {
+                document.documentElement.classList.remove(cls);
+                document.body.classList.remove(cls);
+            }
         );
 
-        document.body.classList.toggle(
-            "acc-dark",
-            dark
-        );
+        const cls =
+            theme === "dark"
+                ? "acc-dark"
+                : theme === "default"
+                    ? null
+                    : "acc-theme-" + theme;
+
+        if (cls) {
+            document.documentElement.classList.add(cls);
+            document.body.classList.add(cls);
+        }
 
         localStorage.setItem(
             THEME_KEY,
-            dark ? "dark" : "light"
+            theme
         );
 
-        const toggle =
-            document.getElementById(
-                "accountDarkModeToggle"
+        document
+            .querySelectorAll(
+                'input[name="accountThemeChoice"]'
+            )
+            .forEach(
+                radio => {
+                    radio.checked =
+                        radio.value === theme;
+                }
             );
-
-        if (toggle) {
-            toggle.checked = dark;
-        }
     }
 
 
     function initializeTheme() {
-        const saved =
+        applyTheme(
             localStorage.getItem(
                 THEME_KEY
-            );
-
-        applyTheme(
-            saved === "dark"
-                ? "dark"
-                : "light"
+            )
         );
     }
 
@@ -123,47 +148,76 @@
         card.className =
             "account-appearance-card";
 
+        const options = [
+            ["default", "Default", "linear-gradient(135deg,#2563eb,#0d2b5b)"],
+            ["dark", "Dark", "linear-gradient(135deg,#334155,#0f172a)"],
+            ["forest", "Forest", "linear-gradient(135deg,#22c55e,#14532d)"],
+            ["plum", "Plum", "linear-gradient(135deg,#a78bfa,#5b21b6)"],
+            ["teal", "Teal", "linear-gradient(135deg,#5eead4,#0f766e)"],
+            ["cotton", "Cotton Candy", "linear-gradient(135deg,#f9a8d4,#7dd3fc)"]
+        ];
+
+        const saved =
+            localStorage.getItem(
+                THEME_KEY
+            );
+
+        const current =
+            THEMES.includes(saved)
+                ? saved
+                : "default";
+
         card.innerHTML =
             `
             <div>
                 <strong>
-                    Dark Mode
+                    Color Theme
                 </strong>
 
                 <div class="account-settings-help">
-                    Use a darker appearance for the scheduling site on this browser.
+                    Pick a look for the scheduling site on this browser.
                 </div>
             </div>
 
-            <label class="account-theme-switch">
-                <input
-                    id="accountDarkModeToggle"
-                    type="checkbox"
-                >
-                <span class="account-theme-slider"></span>
-            </label>
+            <div class="account-theme-options">
+                ${options.map(([value, label, swatch]) => `
+                    <label class="account-theme-option">
+                        <input
+                            type="radio"
+                            name="accountThemeChoice"
+                            value="${value}"
+                            ${value === current ? "checked" : ""}
+                        >
+                        <span
+                            class="account-theme-swatch"
+                            style="background:${swatch};"
+                        ></span>
+                        <span class="account-theme-name">
+                            ${label}
+                        </span>
+                    </label>
+                `).join("")}
+            </div>
             `;
 
-        const toggle =
-            card.querySelector(
-                "#accountDarkModeToggle"
+        card
+            .querySelectorAll(
+                'input[name="accountThemeChoice"]'
+            )
+            .forEach(
+                radio => {
+                    radio.addEventListener(
+                        "change",
+                        function () {
+                            if (radio.checked) {
+                                applyTheme(
+                                    radio.value
+                                );
+                            }
+                        }
+                    );
+                }
             );
-
-        toggle.checked =
-            localStorage.getItem(
-                THEME_KEY
-            ) === "dark";
-
-        toggle.addEventListener(
-            "change",
-            function () {
-                applyTheme(
-                    toggle.checked
-                        ? "dark"
-                        : "light"
-                );
-            }
-        );
 
         return card;
     }
@@ -897,6 +951,163 @@
                 .account-settings-content {
                     padding:18px;
                 }
+            }
+
+            .account-theme-options {
+                display:flex;
+                flex-direction:column;
+                gap:8px;
+                margin-top:12px;
+            }
+
+            .account-theme-option {
+                display:flex;
+                align-items:center;
+                gap:10px;
+                border:1px solid #e2e8f0;
+                border-radius:10px;
+                padding:9px 11px;
+                cursor:pointer;
+                background:#fff;
+            }
+
+            .account-theme-option:has(input:checked) {
+                border-color:#5b8def;
+                box-shadow:0 0 0 3px rgba(59,130,246,.12);
+            }
+
+            .account-theme-option input {
+                accent-color:#174e96;
+            }
+
+            .account-theme-swatch {
+                width:26px;
+                height:26px;
+                border-radius:50%;
+                flex:none;
+                border:1px solid rgba(0,0,0,.08);
+            }
+
+            .account-theme-name {
+                font-weight:700;
+                font-size:13px;
+                color:#18365f;
+            }
+
+            .acc-theme-forest .topbar {
+                background:linear-gradient(110deg,#052e16 0%,#14532d 56%,#166534 100%) !important;
+            }
+
+            .acc-theme-forest .topbar-title:before {
+                background:linear-gradient(135deg,#22c55e,#15803d) !important;
+            }
+
+            .acc-theme-forest .clinic-title {
+                background:linear-gradient(110deg,#052e16,#14532d) !important;
+            }
+
+            .acc-theme-forest .workflow-button.primary,
+            .acc-theme-forest .save-button,
+            .acc-theme-forest .login-button,
+            .acc-theme-forest .rail-primary {
+                background:linear-gradient(135deg,#15803d,#14532d) !important;
+                border-color:#15803d !important;
+            }
+
+            .acc-theme-forest .quarter-week-button.active {
+                background:linear-gradient(135deg,#15803d,#14532d) !important;
+                border-color:#15803d !important;
+            }
+
+            .acc-theme-forest .premium-avatar {
+                background:linear-gradient(135deg,#16a34a,#14532d) !important;
+            }
+
+            .acc-theme-plum .topbar {
+                background:linear-gradient(110deg,#2e1065 0%,#4c1d95 56%,#6d28d9 100%) !important;
+            }
+
+            .acc-theme-plum .topbar-title:before {
+                background:linear-gradient(135deg,#a78bfa,#7c3aed) !important;
+            }
+
+            .acc-theme-plum .clinic-title {
+                background:linear-gradient(110deg,#2e1065,#5b21b6) !important;
+            }
+
+            .acc-theme-plum .workflow-button.primary,
+            .acc-theme-plum .save-button,
+            .acc-theme-plum .login-button,
+            .acc-theme-plum .rail-primary {
+                background:linear-gradient(135deg,#7c3aed,#5b21b6) !important;
+                border-color:#7c3aed !important;
+            }
+
+            .acc-theme-plum .quarter-week-button.active {
+                background:linear-gradient(135deg,#7c3aed,#5b21b6) !important;
+                border-color:#7c3aed !important;
+            }
+
+            .acc-theme-plum .premium-avatar {
+                background:linear-gradient(135deg,#8b5cf6,#5b21b6) !important;
+            }
+
+            .acc-theme-teal .topbar {
+                background:linear-gradient(110deg,#042f2e 0%,#0f766e 56%,#14b8a6 100%) !important;
+            }
+
+            .acc-theme-teal .topbar-title:before {
+                background:linear-gradient(135deg,#5eead4,#14b8a6) !important;
+            }
+
+            .acc-theme-teal .clinic-title {
+                background:linear-gradient(110deg,#042f2e,#0f766e) !important;
+            }
+
+            .acc-theme-teal .workflow-button.primary,
+            .acc-theme-teal .save-button,
+            .acc-theme-teal .login-button,
+            .acc-theme-teal .rail-primary {
+                background:linear-gradient(135deg,#14b8a6,#0f766e) !important;
+                border-color:#0d9488 !important;
+            }
+
+            .acc-theme-teal .quarter-week-button.active {
+                background:linear-gradient(135deg,#14b8a6,#0f766e) !important;
+                border-color:#0d9488 !important;
+            }
+
+            .acc-theme-teal .premium-avatar {
+                background:linear-gradient(135deg,#2dd4bf,#0f766e) !important;
+            }
+
+            .acc-theme-cotton .topbar {
+                background:linear-gradient(110deg,#9d174d 0%,#db2777 50%,#0284c7 100%) !important;
+            }
+
+            .acc-theme-cotton .topbar-title:before {
+                background:linear-gradient(135deg,#f9a8d4,#7dd3fc) !important;
+            }
+
+            .acc-theme-cotton .clinic-title {
+                background:linear-gradient(110deg,#9d174d,#0369a1) !important;
+            }
+
+            .acc-theme-cotton .workflow-button.primary,
+            .acc-theme-cotton .save-button,
+            .acc-theme-cotton .login-button,
+            .acc-theme-cotton .rail-primary {
+                background:linear-gradient(135deg,#ec4899,#0284c7) !important;
+                border-color:#ec4899 !important;
+            }
+
+            .acc-theme-cotton .quarter-week-button.active {
+                background:linear-gradient(135deg,#ec4899,#0284c7) !important;
+                border-color:#ec4899 !important;
+            }
+
+            .acc-theme-cotton .premium-avatar {
+                background:linear-gradient(135deg,#f472b6,#38bdf8) !important;
             }
             `;
 
