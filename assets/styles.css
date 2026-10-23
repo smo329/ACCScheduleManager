@@ -393,9 +393,13 @@
         }
 
         /* CLINICS */
+        /* Clinic schedules stack top-to-bottom at every width, so a
+           full week (Friday included) fits without scrolling inside a
+           half-width panel. The viewer's own clinic goes first; see
+           orderClinicPanelsForViewer in schedule.js. */
         .clinic-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(600px, 1fr));
+            grid-template-columns: 1fr;
             gap: 18px;
             align-items: start;
         }
