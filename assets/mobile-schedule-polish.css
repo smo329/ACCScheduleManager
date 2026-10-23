@@ -41,8 +41,8 @@
 
   .schedule-cell { position:relative !important; min-width:92px !important; width:92px !important; height:74px !important; padding:6px !important; background:#fff !important; scroll-snap-align:center; }
   .schedule-cell.weekend-cell { background:#faf8fd !important; }
-  .schedule-cell.editable { background:linear-gradient(180deg,#f2fcf8,#eaf8f2) !important; }
-  .schedule-cell.editable:focus-within { box-shadow:inset 0 0 0 2px #42b98c !important; background:#e7f9f1 !important; }
+  .schedule-cell.editable { background:#fff !important; }
+  .schedule-cell.editable:focus-within { box-shadow:inset 0 0 0 2px #5b8def !important; background:#fff !important; }
 
   .schedule-select { min-height:42px !important; height:42px !important; width:100% !important; border-radius:9px !important; font-size:15px !important; font-weight:850 !important; color:#15365e !important; text-align:center !important; padding:6px 22px 6px 7px !important; }
   .schedule-cell.locked > span:first-child { display:inline-flex; min-width:34px; min-height:34px; align-items:center; justify-content:center; padding:4px 7px; border-radius:10px; background:#edf3f9; color:#17365d; font-size:14px; font-weight:850; }
@@ -76,7 +76,7 @@
 @media (max-width: 760px) {
   .clinic-panel:has(.current-user-row) .current-user-row td { border-top:1px solid #b9e8d4 !important; border-bottom:1px solid #b9e8d4 !important; }
   .clinic-panel:has(.current-user-row) .current-user-row .schedule-cell { background:#f4fcf8 !important; }
-  .clinic-panel:has(.current-user-row) .current-user-row .schedule-cell.editable { background:linear-gradient(180deg,#ecfaf4,#e5f7ef) !important; }
+  .clinic-panel:has(.current-user-row) .current-user-row .schedule-cell.editable { background:#fff !important; }
   .clinic-panel:has(.current-user-row) .current-user-row .hours-cell { background:#f0f8f5 !important; }
   .clinic-panel:has(.current-user-row) .current-user-row .week-hours-good { background:#dff5e9 !important; }
   .clinic-panel:has(.current-user-row) .current-user-row .week-hours-low { background:#fff0c7 !important; }
