@@ -17,10 +17,83 @@
             : null;
     }
 
+    let lastSyncedTheme = null;
+
+    function getAccountTheme() {
+        try {
+            const user =
+                typeof currentUser !== "undefined" ? currentUser : null;
+            const meta =
+                user && user.user_metadata
+                    ? user.user_metadata.theme
+                    : null;
+            return THEMES.includes(meta) ? meta : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function getSavedTheme() {
+        const accountTheme = getAccountTheme();
+        if (accountTheme) {
+            lastSyncedTheme = accountTheme;
+            return accountTheme;
+        }
         const key = themeKeyForUser();
         const saved = key ? localStorage.getItem(key) : null;
         return THEMES.includes(saved) ? saved : "default";
+    }
+
+    function syncThemeToAccount(theme) {
+        const user =
+            typeof currentUser !== "undefined" ? currentUser : null;
+        if (!user || theme === lastSyncedTheme) {
+            return;
+        }
+        lastSyncedTheme = theme;
+        try {
+            if (
+                typeof supabaseClient === "undefined" ||
+                !supabaseClient.auth
+            ) {
+                lastSyncedTheme = null;
+                return;
+            }
+            const result =
+                supabaseClient.auth.updateUser({ data: { theme } });
+            if (result && typeof result.then === "function") {
+                result.then(({ error }) => {
+                    if (error) {
+                        console.warn(
+                            "Theme sync failed:",
+                            error.message || error
+                        );
+                        lastSyncedTheme = null;
+                        return;
+                    }
+                    if (theme !== lastSyncedTheme) {
+                        return;
+                    }
+                    try {
+                        const current =
+                            typeof currentUser !== "undefined"
+                                ? currentUser
+                                : null;
+                        if (current) {
+                            current.user_metadata = Object.assign(
+                                {},
+                                current.user_metadata,
+                                { theme }
+                            );
+                        }
+                    } catch (_) {}
+                }).catch(() => {
+                    lastSyncedTheme = null;
+                });
+            }
+        } catch (_) {
+            lastSyncedTheme = null;
+        }
     }
 
     console.info(
@@ -103,6 +176,8 @@
         if (key) {
             localStorage.setItem(key, theme);
         }
+
+        syncThemeToAccount(theme);
     }
 
 
