@@ -906,12 +906,17 @@
                             const span = Array.from(cell.querySelectorAll("span"))
                                 .find(el => el.textContent === stored);
                             if (span) {
-                                span.textContent = `${stored} + Admin`;
                                 span.classList.add("schedule-admin-value");
+                                if (!cell.querySelector(".schedule-admin-label")) {
+                                    const adminLabel = document.createElement("span");
+                                    adminLabel.className = "shift-site-display schedule-admin-label";
+                                    adminLabel.textContent = "Admin";
+                                    span.insertAdjacentElement("afterend", adminLabel);
+                                }
                             }
                         }
                         const isZero = stored === "0" || parseWorkedHours(stored) === 0;
-                        const display = isZero ? leaveDisplayFor(profile.id, getDateKey(date)) : null;
+                        const display = (isZero && !cell.querySelector(".schedule-admin-label")) ? leaveDisplayFor(profile.id, getDateKey(date)) : null;
                         if (display) {
                             const span = Array.from(cell.querySelectorAll("span"))
                                 .find(el => el.textContent === stored);
