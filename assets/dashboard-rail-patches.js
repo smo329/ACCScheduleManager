@@ -11,7 +11,7 @@ const isEmployee=()=>role()==='employee';
 const isExternal=()=>role()==='external';
 const isManager=()=>role()==='manager';
 const name=()=>{try{return getProfileName(currentProfile)||'User'}catch(_){return [currentProfile?.first_name,currentProfile?.last_name].filter(Boolean).join(' ')||'User'}};
-const period=()=>{try{return adminSchedulingPeriod||activeSchedulingPeriod||allSchedulingPeriods?.find(p=>p.id===viewSchedulingPeriodId)||null}catch(_){return null}};
+const period=()=>{try{return allSchedulingPeriods?.find(p=>p.id===viewSchedulingPeriodId)||adminSchedulingPeriod||activeSchedulingPeriod||null}catch(_){return null}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function initials(){const parts=name().trim().split(/\s+/);return ((parts[0]?.[0]||'')+(parts.length>1?(parts.at(-1)?.[0]||''):'')).toUpperCase()||'U'}
