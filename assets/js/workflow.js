@@ -3000,10 +3000,23 @@ async function submitQuarter() {
         return;
     }
 
-    if (
-        !getQuarterAccessStatusForUser(
+    /*
+     * Gate on access for the quarter being submitted
+     * (activeSchedulingPeriod), not the admin-selected quarter:
+     * getQuarterAccessStatusForUser reads adminSchedulingAccess,
+     * which for an employee defaults to the current quarter, so
+     * submitting any other quarter always reported locked.
+     * schedulingAccess already holds every user's row for the
+     * active period (same map the Quarter Access badge reads).
+     */
+    const ownSubmitAccess =
+        schedulingAccess[
             currentUser.id
-        )
+        ];
+
+    if (
+        !ownSubmitAccess ||
+        !ownSubmitAccess.is_open
     ) {
 
         showError(
