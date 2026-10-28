@@ -2282,12 +2282,29 @@ function renderWorkflowPanel() {
     // Who currently holds quarter access, for the Locked badge below.
     // schedulingAccess already holds every user's row for the active
     // period, so this needs no extra query. Empty when the viewer themself
-    // holds it (the badge then says Open) or when nobody holds it.
+    // holds it (the badge then says Open) or when nobody at the viewer's
+    // clinic holds it (the badge then says no one has access open).
     const currentQuarterHolderName = (() => {
         if (!activeSchedulingPeriod || ownQuarterOpen) return "";
         try {
+            // Clinics pick independently, so name the holder at the
+            // viewer's own clinic, not the first open person in the
+            // whole quarter (which could be another clinic's holder).
+            const viewerClinic =
+                currentProfile &&
+                currentProfile.clinic_site;
             const openRow = Object.values(schedulingAccess || {}).find(
-                row => row && row.is_open
+                row => {
+                    if (!row || !row.is_open) return false;
+                    if (!viewerClinic) return true;
+                    const holder = (profiles || []).find(
+                        profile => profile.id === row.user_id
+                    );
+                    return Boolean(
+                        holder &&
+                        holder.clinic_site === viewerClinic
+                    );
+                }
             );
             if (!openRow) return "";
             const holder = (profiles || []).find(
