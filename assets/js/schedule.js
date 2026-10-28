@@ -267,7 +267,7 @@ function renderClinicHeader(
         );
 
     vacation.className =
-        "hours-column";
+        "hours-column summary-divider";
 
     vacation.innerHTML =
         "Vacation<br>Hours";
@@ -692,7 +692,7 @@ function createWeeklyEmployeeRow(
         );
 
     vacationCell.className =
-        "hours-cell";
+        "hours-cell summary-divider";
 
     vacationCell.textContent =
         hours.vacation;
