@@ -2821,59 +2821,35 @@ async function doQuarterSubmit(
         );
     }
 
-    const ownOverride =
-        ownAccess &&
-        ownAccess.weekend_target_override !==
-            null &&
-        ownAccess.weekend_target_override !==
-            undefined
-            ? ownAccess.weekend_target_override
-            : null;
-
+    /*
+     * Close + advance through the database function: employees
+     * have no direct write permission on scheduling_period_access,
+     * so the direct upserts below always failed RLS at submit.
+     * The function verifies the caller, closes their row, and
+     * opens the next waiting picker in their clinic (same queue
+     * order the app computes above), preserving overrides. It
+     * returns the next picker's id, or null when nobody waits.
+     */
     const {
-        error: closeError
+        error: advanceError
     } =
         await supabaseClient
-            .from(
-                "scheduling_period_access"
-            )
-            .upsert(
+            .rpc(
+                "submit_quarter_close_and_advance",
                 {
-                    period_id:
-                        period.id,
-
-                    user_id:
-                        currentUser.id,
-
-                    is_open:
-                        false,
-
-                    weekend_target_override:
-                        ownOverride,
-
-                    opened_at:
-                        null,
-
-                    closed_at:
-                        now,
-
-                    updated_at:
-                        now
-                },
-                {
-                    onConflict:
-                        "period_id,user_id"
+                    p_period_id:
+                        period.id
                 }
             );
 
     if (
-        closeError
+        advanceError
     ) {
 
         throw new Error(
             "Your weeks were submitted, but your access " +
                 "could not be closed: " +
-                closeError.message +
+                advanceError.message +
                 " Your access is still open, so you can " +
                 "try submitting again."
         );
@@ -2901,66 +2877,6 @@ async function doQuarterSubmit(
     if (
         nextPicker
     ) {
-
-        const nextOverride =
-            nextAccess &&
-            nextAccess.weekend_target_override !==
-                null &&
-            nextAccess.weekend_target_override !==
-                undefined
-                ? nextAccess.weekend_target_override
-                : null;
-
-        const {
-            error: openError
-        } =
-            await supabaseClient
-                .from(
-                    "scheduling_period_access"
-                )
-                .upsert(
-                    {
-                        period_id:
-                            period.id,
-
-                        user_id:
-                            nextPicker.id,
-
-                        is_open:
-                            true,
-
-                        weekend_target_override:
-                            nextOverride,
-
-                        opened_at:
-                            now,
-
-                        closed_at:
-                            null,
-
-                        updated_at:
-                            now
-                    },
-                    {
-                        onConflict:
-                            "period_id,user_id"
-                    }
-                );
-
-        if (
-            openError
-        ) {
-
-            throw new Error(
-                "Your quarter was submitted and your access " +
-                    "closed, but scheduling could not be moved to " +
-                    getProfileName(nextPicker) +
-                    ": " +
-                    openError.message +
-                    " An administrator can open access for " +
-                    "them manually."
-            );
-        }
 
         /* Opening the next picker fires the existing
            quarter-access-moved notification trigger, so
