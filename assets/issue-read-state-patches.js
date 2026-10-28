@@ -42,11 +42,7 @@
       if(!meta){meta=document.createElement('div');meta.className='notification-card-meta issue-read-state';card.appendChild(meta)}
       meta.textContent=unread?'New or changed since you last reviewed these issues.':'Reviewed — still unresolved.';
     }
-    const badge=document.getElementById('notificationCenterBadge');
-    if(badge&&s?.count>0&&!unread){
-      const n=parseInt(badge.textContent,10);
-      if(Number.isFinite(n)&&n>0){const next=Math.max(0,n-1);badge.textContent=String(next);badge.style.display=next?'inline-flex':'none'}
-    }
+    if(typeof window.refreshNotificationBadge==='function')window.refreshNotificationBadge();
   }
 
   window.accIssuesIsUnread=isUnread;
