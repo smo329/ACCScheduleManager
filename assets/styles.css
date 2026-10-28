@@ -503,6 +503,13 @@
 
         .hours-cell { font-weight: 500; }
 
+        /* Hard divider between the Saturday column and the
+           summary columns: the Vacation Hours column carries
+           a thicker left border, header and rows alike. */
+        .summary-divider {
+            border-left: 2px solid #94a3b8;
+        }
+
         .week-hours-good {
             background: #dcfce7 !important;
             color: #166534;
