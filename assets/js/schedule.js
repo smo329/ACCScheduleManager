@@ -544,7 +544,9 @@ function createWeeklyEmployeeRow(
                 // editable row. Render the display form here, at the
                 // source, so it cannot be missed by a later step:
                 // A4 becomes "Admin", and a numeric day with a
-                // separate Admin piece shows "8 + Admin".
+                // separate Admin piece stacks the number on top
+                // with "Admin" below in the same smaller text the
+                // site letter uses, instead of "8 + Admin".
                 const adminPieceLocked =
                     typeof window.getAdminHours === "function"
                         ? window.getAdminHours(profile.id, dateKey)
@@ -552,9 +554,7 @@ function createWeeklyEmployeeRow(
                 valueSpan.textContent =
                     value === "A4"
                         ? "Admin"
-                        : adminPieceLocked > 0
-                            ? `${value} + Admin`
-                            : value;
+                        : value;
                 if (value === "A4" || adminPieceLocked > 0) {
                     valueSpan.classList.add("schedule-admin-value");
                 }
@@ -562,6 +562,27 @@ function createWeeklyEmployeeRow(
                 cell.appendChild(
                     valueSpan
                 );
+
+                if (
+                    value !== "A4" &&
+                    adminPieceLocked > 0
+                ) {
+
+                    const adminSpan =
+                        document.createElement(
+                            "span"
+                        );
+
+                    adminSpan.className =
+                        "shift-site-display schedule-admin-label";
+
+                    adminSpan.textContent =
+                        "Admin";
+
+                    cell.appendChild(
+                        adminSpan
+                    );
+                }
 
                 if (
                     value === "12" &&
