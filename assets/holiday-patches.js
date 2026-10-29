@@ -913,43 +913,10 @@
     }
 
     /* ------------------------------------------------------------------
-       Entry point: a Holidays button in the Manage People modal. The
-       modal markup is static, so inject once at load and re-check
-       whenever the admin panel opens.
+       Entry point: a Holidays item in the admin sidebar, next to
+       Critical Labs. (The old Manage People modal button is gone.)
        ------------------------------------------------------------------ */
-    function ensureHolidayButton() {
-        if (!isAdmin()) return;
-        var top = document.querySelector("#adminModal .admin-top");
-        if (!top || document.getElementById("holidayOpenButton")) return;
-        var b = document.createElement("button");
-        b.id = "holidayOpenButton";
-        b.type = "button";
-        b.className = "modal-button save-button";
-        b.textContent = "Holidays";
-        b.onclick = function () {
-            var am = document.getElementById("adminModal");
-            if (am) am.style.display = "none";
-            openHolidayModal();
-        };
-        top.appendChild(b);
-    }
 
     ensureStyles();
-    ensureHolidayButton();
-    if (typeof window.openPeopleManagement === "function") {
-        var origOpenPeople = window.openPeopleManagement;
-        window.openPeopleManagement = function () {
-            var r = origOpenPeople.apply(this, arguments);
-            setTimeout(ensureHolidayButton, 0);
-            return r;
-        };
-    } else if (typeof openAdmin === "function") {
-        var origOpenAdmin = openAdmin;
-        openAdmin = function () {
-            var r = origOpenAdmin.apply(this, arguments);
-            setTimeout(ensureHolidayButton, 0);
-            return r;
-        };
-    }
 
 })();
