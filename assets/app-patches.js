@@ -942,6 +942,38 @@
         };
     }
 
+    /* Full-week leave errors show inline in the workflow panel, like the
+       employment-dates editor's inline error box — never the top banner,
+       and never the raw database message. */
+    function showFullWeekLeaveError(message) {
+        const actions = document.querySelector(
+            "#workflowPanel .workflow-actions"
+        );
+        if (!actions) return;
+        let box = document.getElementById("fullWeekLeaveError");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "fullWeekLeaveError";
+            box.style.cssText = "margin-top:8px;padding:8px 10px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:13px;font-weight:700;line-height:1.4";
+            actions.insertAdjacentElement("afterend", box);
+        }
+        box.textContent = message;
+        box.style.display = "block";
+    }
+
+    function clearFullWeekLeaveError() {
+        const box = document.getElementById("fullWeekLeaveError");
+        if (box) box.style.display = "none";
+    }
+
+    function friendlyFullWeekLeaveError(error) {
+        const raw = (error && error.message) || String(error || "");
+        if (/row-level security|violates.*policy/i.test(raw)) {
+            return "Full-week leave could not be saved. This schedule is not open for changes right now.";
+        }
+        return "Full-week leave could not be saved. Please try again.";
+    }
+
     async function applyFullWeekLeavePlan() {
         if (
             !currentUser ||
@@ -950,6 +982,8 @@
         ) {
             return;
         }
+
+        clearFullWeekLeaveError();
 
         const vl = Number(prompt(
             "Full-week Vacation hours (whole hours):",
@@ -974,12 +1008,12 @@
                 v => !Number.isInteger(v) || v < 0 || v > 40
             )
         ) {
-            showError("Full-week leave must use whole-hour amounts.");
+            showFullWeekLeaveError("Full-week leave must use whole-hour amounts.");
             return;
         }
 
         if (vl + pl + tdl !== 40) {
-            showError(
+            showFullWeekLeaveError(
                 `Full-week leave must total exactly 40 hours. Current total: ${vl + pl + tdl}.`
             );
             return;
@@ -1062,12 +1096,9 @@
         ]);
 
         if (scheduleResult.error || leaveResult.error) {
-            showError(
-                "Full-week leave could not be saved: " +
-                (
-                    scheduleResult.error
-                        ? scheduleResult.error.message
-                        : leaveResult.error.message
+            showFullWeekLeaveError(
+                friendlyFullWeekLeaveError(
+                    scheduleResult.error || leaveResult.error
                 )
             );
             return;
