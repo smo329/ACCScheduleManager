@@ -354,12 +354,10 @@
             + '<div class="holiday-tabs"><button type="button" class="holiday-tab active" data-tab="assign">Assignments</button>'
             + '<button type="button" class="holiday-tab" data-tab="trades">Trades</button>'
             + '<button type="button" class="holiday-tab" data-tab="history">History</button>'
-            + '<button type="button" class="holiday-tab" data-tab="myHolidays" style="display:none">My Holidays</button>'
-            + '<button type="button" class="holiday-tab" data-tab="myRequests" style="display:none">My Requests</button></div>'
+            + '<button type="button" class="holiday-tab" data-tab="myHolidays" style="display:none">My Holidays</button></div>'
             + '<div id="holidayTabAssign"></div><div id="holidayTabTrades" style="display:none"></div>'
             + '<div id="holidayTabHistory" style="display:none"></div>'
             + '<div id="holidayTabMyHolidays" style="display:none"></div>'
-            + '<div id="holidayTabMyRequests" style="display:none"></div>'
             + '</div><div class="modal-footer"><button class="modal-button cancel-button" id="holidayModalDone">Close</button></div></div>';
         document.body.appendChild(m);
         document.getElementById("holidayModalClose").onclick = closeHolidayModal;
@@ -375,7 +373,6 @@
                 });
                 if (b.dataset.tab === "history") renderHistoryTab();
                 if (b.dataset.tab === "myHolidays") renderMyHolidaysTab();
-                if (b.dataset.tab === "myRequests") renderMyRequestsTab();
             };
         });
         var ys = document.getElementById("holidayYearSelect");
@@ -409,7 +406,6 @@
         show("trades", admin);
         show("history", admin);
         show("myHolidays", !admin);
-        show("myRequests", !admin);
         var active = admin ? "assign" : "myHolidays";
         m.querySelectorAll(".holiday-tab").forEach(function (b) {
             b.classList.toggle("active", b.dataset.tab === active);
@@ -425,7 +421,6 @@
             if (document.getElementById("holidayTabHistory").style.display !== "none") renderHistoryTab();
         } else {
             renderMyHolidaysTab();
-            renderMyRequestsTab();
         }
     }
 
@@ -639,10 +634,8 @@
     }
 
     /* ------------------------------------------------------------------
-       Employee tabs: My Holidays (own coverage + propose a trade) and
-       My Requests (incoming pending trades to accept/decline, outgoing
-       pending trades to cancel). Acceptance runs the RPC, which swaps
-       the two days on the schedule immediately.
+       Employee tabs: My Holidays (own coverage + propose a trade).
+       Incoming and outgoing requests live in Trade Center only.
        ------------------------------------------------------------------ */
     function renderMyHolidaysTab() {
         var box = document.getElementById("holidayTabMyHolidays");
@@ -676,7 +669,7 @@
             + '<div class="form-group"><label>For their holiday</label><select id="myTradeTheirs"></select></div></div>'
             + '<button class="modal-button save-button" id="myTradeSend">Send trade request</button>'
             + '<div id="myTradeMsg" class="holiday-note"></div>'
-            + '<div class="holiday-note">A 1:1 swap: you give one holiday and receive one. The other provider accepts or declines; on acceptance the two days swap on the schedule right away.</div>' : "");
+            + '<div class="holiday-note">A 1:1 swap: you give one holiday and receive one. The other provider accepts or declines in Trade Center; on acceptance the two days swap on the schedule right away.</div>' : "");
         if (!group) return;
         var fillMine = function () {
             document.getElementById("myTradeMine").innerHTML = Object.keys(eff).map(function (k) {
@@ -707,67 +700,10 @@
                 to_user_id: tu, to_holiday_key: th, status: "pending", created_by: me
             });
             if (res.error) { m.textContent = "Request failed: " + res.error.message; return; }
-            m.textContent = "Trade request sent.";
+            m.textContent = "Trade request sent — find it in Trade Center.";
             await loadHolidayData();
             renderAllTabs();
         };
-    }
-
-    function renderMyRequestsTab() {
-        var box = document.getElementById("holidayTabMyRequests");
-        if (!box) return;
-        var me = currentUser ? currentUser.id : null;
-        if (!me) { box.textContent = "Sign in to see your requests."; return; }
-        var incoming = trades.filter(function (t) { return t.to_user_id === me && t.status === "pending"; });
-        var outgoing = trades.filter(function (t) { return t.from_user_id === me && t.status === "pending"; });
-        var inRows = incoming.map(function (t) {
-            return "<tr><td>" + esc(profileName(t.from_user_id)) + " offers " + esc((defs[t.from_holiday_key] || {}).name || t.from_holiday_key)
-                + "</td><td>for your " + esc((defs[t.to_holiday_key] || {}).name || t.to_holiday_key) + " (" + t.year + ")</td>"
-                + '<td><button class="modal-button save-button" data-trade-accept="' + esc(t.id) + '">Accept</button> '
-                + '<button class="modal-button cancel-button" data-trade-decline="' + esc(t.id) + '">Decline</button></td></tr>';
-        }).join("") || '<tr><td colspan="3">No incoming requests.</td></tr>';
-        var outRows = outgoing.map(function (t) {
-            return "<tr><td>You offered " + esc((defs[t.from_holiday_key] || {}).name || t.from_holiday_key)
-                + "</td><td>for " + esc(profileName(t.to_user_id)) + "'s " + esc((defs[t.to_holiday_key] || {}).name || t.to_holiday_key) + " (" + t.year + ")</td>"
-                + '<td><button class="modal-button cancel-button" data-trade-cancel="' + esc(t.id) + '">Cancel</button></td></tr>';
-        }).join("") || '<tr><td colspan="3">No outgoing requests.</td></tr>';
-        box.innerHTML = '<div id="myRequestsMsg" class="holiday-note"></div>'
-            + "<p><strong>Incoming requests</strong></p>"
-            + '<table class="holiday-table"><tr><th>Offer</th><th>For</th><th></th></tr>' + inRows + "</table>"
-            + "<p style=\"margin-top:14px\"><strong>Outgoing requests</strong></p>"
-            + '<table class="holiday-table"><tr><th>Offer</th><th>For</th><th></th></tr>' + outRows + "</table>";
-        var msg = document.getElementById("myRequestsMsg");
-        box.querySelectorAll("[data-trade-accept]").forEach(function (b) {
-            b.onclick = async function () {
-                var res = await supabaseClient.rpc("accept_holiday_trade", { p_trade_id: b.dataset.tradeAccept });
-                if (res.error) { msg.textContent = "Accept failed: " + res.error.message; return; }
-                msg.textContent = "Trade accepted — the two days swapped on the schedule.";
-                await loadHolidayData();
-                renderAllTabs();
-                if (typeof loadWeek === "function") { try { await loadWeek(); } catch (_) {} }
-            };
-        });
-        box.querySelectorAll("[data-trade-decline]").forEach(function (b) {
-            b.onclick = async function () {
-                var res = await supabaseClient.from("holiday_trades")
-                    .update({ status: "declined", responded_at: new Date().toISOString() })
-                    .eq("id", b.dataset.tradeDecline).eq("to_user_id", me).eq("status", "pending");
-                if (res.error) { msg.textContent = "Decline failed: " + res.error.message; return; }
-                msg.textContent = "Trade declined.";
-                await loadHolidayData();
-                renderAllTabs();
-            };
-        });
-        box.querySelectorAll("[data-trade-cancel]").forEach(function (b) {
-            b.onclick = async function () {
-                var res = await supabaseClient.from("holiday_trades")
-                    .delete().eq("id", b.dataset.tradeCancel).eq("from_user_id", me).eq("status", "pending");
-                if (res.error) { msg.textContent = "Cancel failed: " + res.error.message; return; }
-                msg.textContent = "Request cancelled.";
-                await loadHolidayData();
-                renderAllTabs();
-            };
-        });
     }
 
     async function renderHistoryTab() {
