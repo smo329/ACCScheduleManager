@@ -436,7 +436,22 @@
 
       const buttons = card.querySelector(".person-buttons");
       if (buttons) {
-        buttons.appendChild(button);
+        /* Keep Employment Dates on the same row as Change Picks: the two
+           together are just wide enough to wrap in the 300px buttons
+           column, so wrap them in one nowrap flex item instead of
+           appending the dates button after it. */
+        const changePicks = Array.from(buttons.querySelectorAll("button")).find(
+          (b) => b.textContent.trim() === "Change Picks"
+        );
+        if (changePicks) {
+          const pair = document.createElement("span");
+          pair.style.cssText = "display:inline-flex;gap:6px;align-items:center;";
+          changePicks.replaceWith(pair);
+          pair.appendChild(changePicks);
+          pair.appendChild(button);
+        } else {
+          buttons.appendChild(button);
+        }
       } else {
         card.appendChild(button);
       }
