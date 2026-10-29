@@ -146,7 +146,7 @@
     m = document.createElement('div');
     m.id = 'myCriticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage, newest first. Request a 1:1 trade for any current or upcoming week.</p><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage, closest to the current week first. Request a 1:1 trade for any current or upcoming week.</p><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#myCriticalLabsClose').onclick = () => m.classList.remove('show');
@@ -168,7 +168,7 @@
     try {
       if (!supabaseClient) throw new Error('No database connection.');
       const { data, error } = await supabaseClient.from(TABLE)
-        .select('week_start').eq('user_id', uid).order('week_start', { ascending: false });
+        .select('week_start').eq('user_id', uid);
       if (error) throw error;
       rows = data || [];
     } catch (e) {
@@ -180,7 +180,19 @@
       box.innerHTML = '<div class="my-schedule-empty">You have no Critical Labs coverage weeks.</div>';
       return;
     }
+    /* Closest to the current week first: current and upcoming weeks in
+       ascending order, then past weeks most-recent first. */
     const thisSunday = sundayOf(keyOf(new Date()));
+    rows.sort((a, b) => {
+      const wa = String(a.week_start).slice(0, 10);
+      const wb = String(b.week_start).slice(0, 10);
+      const aUp = wa >= thisSunday;
+      const bUp = wb >= thisSunday;
+      if (aUp && !bUp) return -1;
+      if (!aUp && bUp) return 1;
+      if (wa === wb) return 0;
+      return aUp ? (wa < wb ? -1 : 1) : (wa < wb ? 1 : -1);
+    });
     box.innerHTML = rows.map(r => {
       const ws = String(r.week_start).slice(0, 10);
       const trade = ws >= thisSunday
