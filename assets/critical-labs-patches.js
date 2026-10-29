@@ -146,7 +146,7 @@
     m = document.createElement('div');
     m.id = 'myCriticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.</p><div style="display:flex;gap:8px;margin-bottom:12px"><button type="button" id="myCriticalLabsTabCurrent" class="modal-button cancel-button">Current &amp; upcoming</button><button type="button" id="myCriticalLabsTabPrevious" class="modal-button cancel-button">Previous weeks</button></div><div id="myCriticalLabsTradeWrap" style="display:none;text-align:right;margin:0 0 12px"><button type="button" class="modal-button save-button" id="myCriticalLabsTradeBtn">Request Trade</button><div id="myCriticalLabsTradeChooser" style="display:none;margin-top:8px"><label for="myCriticalLabsWeekSelect" style="color:#475569;font-size:13px;margin-right:8px">Week to trade</label><select id="myCriticalLabsWeekSelect"></select> <button type="button" class="modal-button save-button" id="myCriticalLabsTradeGo">Continue</button></div></div><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p id="myCriticalLabsDescription" style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.</p><div style="display:flex;gap:8px;margin-bottom:12px"><button type="button" id="myCriticalLabsTabCurrent" class="modal-button cancel-button">Current &amp; upcoming</button><button type="button" id="myCriticalLabsTabPrevious" class="modal-button cancel-button">Previous weeks</button></div><div id="myCriticalLabsTradeWrap" style="display:none;text-align:right;margin:0 0 12px"><button type="button" class="modal-button save-button" id="myCriticalLabsTradeBtn">Request Trade</button><div id="myCriticalLabsTradeChooser" style="display:none;margin-top:8px"><label for="myCriticalLabsWeekSelect" style="color:#475569;font-size:13px;margin-right:8px">Week to trade</label><select id="myCriticalLabsWeekSelect"></select> <button type="button" class="modal-button save-button" id="myCriticalLabsTradeGo">Continue</button></div></div><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#myCriticalLabsClose').onclick = () => m.classList.remove('show');
@@ -155,6 +155,7 @@
       if (c) c.style.display = c.style.display === 'none' ? 'block' : 'none';
     };
     m.querySelector('#myCriticalLabsTradeGo').onclick = () => {
+      if (isViewAs()) return; // Read-only in view-as; the button is hidden there anyway.
       const sel = m.querySelector('#myCriticalLabsWeekSelect');
       const week = sel ? sel.value : '';
       if (!week) return;
@@ -165,13 +166,24 @@
   }
 
   window.openMyCriticalLabs = async function () {
-    if (isViewAs()) return;
+    /* In view-as mode the modal mirrors the VIEWED person's coverage,
+       read-only: their id comes from currentProfile, which view-as
+       swaps to the viewed person's row, and the trade UI stays hidden. */
+    const readOnly = isViewAs();
     let uid = null;
-    try { uid = currentUser?.id || null; } catch (_) {}
+    try { uid = readOnly ? (currentProfile?.id || currentProfile?.user_id || null) : (currentUser?.id || null); } catch (_) {}
     if (!uid) return;
     const m = ensureMyCriticalLabsModal();
     const box = m.querySelector('#myCriticalLabsWeeks');
     const msg = m.querySelector('#myCriticalLabsMessage');
+    const desc = m.querySelector('#myCriticalLabsDescription');
+    if (desc && readOnly) {
+      let name = 'This person';
+      try { if (typeof getProfileName === 'function' && currentProfile) name = getProfileName(currentProfile); } catch (_) {}
+      desc.textContent = name + '’s Critical Labs coverage weeks. Current and upcoming weeks are listed first, with past weeks under Previous weeks.';
+    } else if (desc) {
+      desc.textContent = 'Every week you hold Critical Labs coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.';
+    }
     const tradeWrap = m.querySelector('#myCriticalLabsTradeWrap');
     const tradeChooser = m.querySelector('#myCriticalLabsTradeChooser');
     const tradeSelect = m.querySelector('#myCriticalLabsWeekSelect');
@@ -188,12 +200,12 @@
       if (error) throw error;
       rows = data || [];
     } catch (e) {
-      msg.textContent = 'Unable to load your coverage weeks. Please try again.';
+      msg.textContent = readOnly ? 'Unable to load these coverage weeks. Please try again.' : 'Unable to load your coverage weeks. Please try again.';
       box.innerHTML = '';
       return;
     }
     if (!rows.length) {
-      box.innerHTML = '<div class="my-schedule-empty">You have no Critical Labs coverage weeks.</div>';
+      box.innerHTML = `<div class="my-schedule-empty">${readOnly ? 'This person has no Critical Labs coverage weeks.' : 'You have no Critical Labs coverage weeks.'}</div>`;
       return;
     }
     /* Closest to the current week first: current and upcoming weeks in
@@ -226,7 +238,7 @@
       active(tabCurrent, tab === 'current');
       active(tabPrevious, tab === 'previous');
       const list = tab === 'current' ? upcoming : past;
-      if (tradeWrap) tradeWrap.style.display = (tab === 'current' && tradable.length) ? 'block' : 'none';
+      if (tradeWrap) tradeWrap.style.display = (!readOnly && tab === 'current' && tradable.length) ? 'block' : 'none';
       if (tradeChooser) tradeChooser.style.display = 'none';
       if (!list.length) {
         box.innerHTML = `<div class="my-schedule-empty">${tab === 'current' ? 'No current or upcoming coverage weeks.' : 'No previous coverage weeks.'}</div>`;
