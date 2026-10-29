@@ -139,6 +139,60 @@
     };
   }
 
+  /* ---- Employee view: "My Critical Labs" — every week I hold ---- */
+  function ensureMyCriticalLabsModal() {
+    let m = document.getElementById('myCriticalLabsModal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'myCriticalLabsModal';
+    m.className = 'modal-overlay';
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage, newest first. Request a 1:1 trade for any current or upcoming week.</p><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
+    m.querySelector('#myCriticalLabsClose').onclick = () => m.classList.remove('show');
+    return m;
+  }
+
+  window.openMyCriticalLabs = async function () {
+    if (isViewAs()) return;
+    let uid = null;
+    try { uid = currentUser?.id || null; } catch (_) {}
+    if (!uid) return;
+    const m = ensureMyCriticalLabsModal();
+    const box = m.querySelector('#myCriticalLabsWeeks');
+    const msg = m.querySelector('#myCriticalLabsMessage');
+    msg.textContent = '';
+    box.innerHTML = '<div class="my-schedule-empty">Loading coverage…</div>';
+    m.classList.add('show');
+    let rows = [];
+    try {
+      if (!supabaseClient) throw new Error('No database connection.');
+      const { data, error } = await supabaseClient.from(TABLE)
+        .select('week_start').eq('user_id', uid).order('week_start', { ascending: false });
+      if (error) throw error;
+      rows = data || [];
+    } catch (e) {
+      msg.textContent = 'Unable to load your coverage weeks. Please try again.';
+      box.innerHTML = '';
+      return;
+    }
+    if (!rows.length) {
+      box.innerHTML = '<div class="my-schedule-empty">You have no Critical Labs coverage weeks.</div>';
+      return;
+    }
+    const thisSunday = sundayOf(keyOf(new Date()));
+    box.innerHTML = rows.map(r => {
+      const ws = String(r.week_start).slice(0, 10);
+      const trade = ws >= thisSunday
+        ? `<button type="button" class="modal-button cancel-button" data-trade-week="${esc(ws)}">Request Trade</button>`
+        : '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0"><span style="font-weight:650;color:#17365d">${esc(weekLabel(ws))}</span>${trade}</div>`;
+    }).join('');
+    box.querySelectorAll('[data-trade-week]').forEach(btn => {
+      btn.onclick = () => { try { window.openCriticalLabsTradePicker?.(btn.dataset.tradeWeek); } catch (_) {} };
+    });
+  };
+
   /* ---- Admin panel: pick one person per week in the current quarter ---- */
   function ensureModal() {
     let m = document.getElementById('criticalLabsModal');
