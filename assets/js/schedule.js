@@ -48,13 +48,7 @@ function renderSchedule() {
 
     updateWeekTitle();
 
-    /*
-     * If Previous/Next Week enters another existing quarter,
-     * move the quarter/month selectors with the displayed week.
-     * Weeks outside every existing quarter leave the current
-     * quarter selection unchanged.
-     */
-    syncQuarterSelectionToCurrentWeek();
+    /* Quarter follows the displayed week only on week navigation, not on every render. */
 
     renderQuarterNavigator();
     renderWorkflowPanel();
