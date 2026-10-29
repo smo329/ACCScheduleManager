@@ -281,12 +281,13 @@
                 if (typeof currentUser !== "undefined" && currentUser && !dataLoaded) {
                     loadHolidayData().then(function () {
                         try { holidayPostPass(); } catch (_) {}
+                        try { holidayStripPassSoon(); } catch (_) {}
                     });
                 } else {
                     holidayPostPass();
                 }
             } catch (e) { console.warn("Holiday post-pass failed", e); }
-            try { ensureHeaderHolidayButton(); } catch (_) {}
+            try { holidayStripPassSoon(); } catch (_) {}
             return result;
         };
     }
@@ -877,21 +878,47 @@
         render();
     }
 
-    /* Header entry point for Turfland employees: a My Holidays button
-       next to the week buttons. It appears once signed in and hides in
-       view-as mode and for anyone who is not a Turfland employee. */
-    function ensureHeaderHolidayButton() {
-        var weekRight = document.querySelector(".week-right");
-        var btn = document.getElementById("holidayHeaderButton");
-        if (!isTurflandEmployee()) { if (btn) btn.remove(); return; }
-        if (!weekRight || btn) return;
-        btn = document.createElement("button");
-        btn.id = "holidayHeaderButton";
-        btn.type = "button";
-        btn.className = "week-button";
-        btn.textContent = "My Holidays";
-        btn.onclick = openHolidayModal;
-        weekRight.appendChild(btn);
+    /* Strip entry point: for Turfland employees the Notifications strip
+       card becomes My Holidays (the bell already opens notifications).
+       Skipped in view-as mode, and for anyone who is not a Turfland
+       employee the strip is left alone. The strip rebuilds on a timeout
+       after each render, so this runs both now and on the next tick. */
+    function holidayStripInfo() {
+        try {
+            if (!dataLoaded || !currentUser) return null;
+            var year = new Date().getFullYear();
+            var group = assignments[currentUser.id + "|" + year];
+            if (!group) return null;
+            var eff = effectiveHolidaysFor(currentUser.id, year);
+            return { group: group, count: Object.keys(eff).length, year: year };
+        } catch (_) { return null; }
+    }
+
+    function holidayStripPass() {
+        try {
+            if (window.viewAsActive) return;
+            if (!isTurflandEmployee()) return;
+            var strip = document.getElementById("accDashboardStrip");
+            if (!strip) return;
+            var info = holidayStripInfo();
+            strip.querySelectorAll(".acc-stat-card").forEach(function (card) {
+                var label = card.querySelector(".acc-stat-label");
+                if (!label || label.textContent.trim() !== "Notifications") return;
+                var icon = card.querySelector(".acc-stat-icon");
+                var value = card.querySelector(".acc-stat-value");
+                var sub = card.querySelector(".acc-stat-sub");
+                if (icon) icon.textContent = "🗓";
+                label.textContent = "My Holidays";
+                if (value) value.textContent = info ? "Group " + info.group : "View";
+                if (sub) sub.textContent = info ? info.count + " holidays · " + info.year : "Holiday coverage";
+                card.onclick = openHolidayModal;
+            });
+        } catch (_) {}
+    }
+
+    function holidayStripPassSoon() {
+        try { holidayStripPass(); } catch (_) {}
+        setTimeout(function () { try { holidayStripPass(); } catch (_) {} }, 0);
     }
 
     /* ------------------------------------------------------------------
