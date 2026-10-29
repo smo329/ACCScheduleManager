@@ -95,7 +95,7 @@ function pickingCardHtml(){
  return `<section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}${viewerClinic?` · ${esc(viewerClinic)}`:''}</div><div class="picking-list">${rows.map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';const arrows=isAdmin()?`<div class="picking-order"><button type="button" data-move="${esc(pr.id)}|-1" ${i===0?'disabled':''} aria-label="Move up">↑</button><button type="button" data-move="${esc(pr.id)}|1" ${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></div>`:'';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span>${arrows}</div>`}).join('')||'<div class="rail-subtle">No active employees.</div>'}</div>${isAdmin()?'<button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button>':''}</section>`;
 }
 function bindPickingCard(rail){
- rail.querySelectorAll('[data-move]').forEach(b=>{b.onclick=()=>{const [id,dir]=b.dataset.move.split('|');movePickingOrder(id,Number(dir))}});
+ rail.querySelectorAll('[data-move]').forEach(b=>{b.onclick=(e)=>{e.stopPropagation();const [id,dir]=b.dataset.move.split('|');movePickingOrder(id,Number(dir))}});
  rail.querySelector('#railManagePeople')?.addEventListener('click',()=>window.openPeopleManagement?.()||window.openAdmin?.());
 }
 function renderAdminRail(rail){
