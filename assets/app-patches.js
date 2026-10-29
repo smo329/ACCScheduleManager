@@ -932,52 +932,10 @@
         });
     }
 
-    function syncQuarterSelectionToCurrentWeekPatch() {
-        if (
-            !Array.isArray(allSchedulingPeriods) ||
-            !allSchedulingPeriods.length ||
-            !currentWeekStart
-        ) {
-            return;
-        }
-
-        const weekStart = getDateKey(currentWeekStart);
-        const weekEndDate = new Date(currentWeekStart);
-        weekEndDate.setDate(weekEndDate.getDate() + 6);
-        const weekEnd = getDateKey(weekEndDate);
-
-        const matchingPeriod = allSchedulingPeriods.find(
-            period =>
-                period &&
-                period.active &&
-                weekStart <= period.period_end &&
-                weekEnd >= period.period_start
-        );
-
-        if (!matchingPeriod) return;
-
-        viewSchedulingPeriodId = matchingPeriod.id;
-
-        const monthKeys = getPeriodMonthKeys(matchingPeriod);
-        const assignedMonth = getAssignedMonthKeyForWeekDate(currentWeekStart);
-
-        if (monthKeys.includes(assignedMonth)) {
-            viewMonthKey = assignedMonth;
-        } else if (!viewMonthKey || !monthKeys.includes(viewMonthKey)) {
-            viewMonthKey = monthKeys[0] || null;
-        }
-    }
-
     if (typeof renderSchedule === "function") {
         const originalRenderSchedule = renderSchedule;
 
         renderSchedule = function (...args) {
-            try {
-                syncQuarterSelectionToCurrentWeekPatch();
-            } catch (error) {
-                console.warn(error);
-            }
-
             const result = originalRenderSchedule.apply(this, args);
             compactTablesAndAddBadges();
             return result;
