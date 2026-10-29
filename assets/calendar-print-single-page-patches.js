@@ -19,7 +19,7 @@
       width:100% !important;
       min-width:0 !important;
       max-width:100% !important;
-      height:6.45in !important;
+      height:6.6in !important;
       grid-template-columns:repeat(7,minmax(0,1fr)) !important;
       grid-template-rows:.28in repeat(6,minmax(0,1fr)) !important;
       overflow:hidden !important;
