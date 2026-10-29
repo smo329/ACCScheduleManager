@@ -854,7 +854,42 @@
 
     function holidayStripPassSoon() {
         try { holidayStripPass(); } catch (_) {}
+        try { installHolidayStripObserver(); } catch (_) {}
         setTimeout(function () { try { holidayStripPass(); } catch (_) {} }, 0);
+    }
+
+    /* The strip is also rebuilt by paths that never touch renderSchedule
+       (premium's refresh timers and the updateUserHeader -> refresh path),
+       and each rebuild resets the card to Notifications — which is why
+       the swap appeared for a second and then vanished. Watch the strip
+       itself so the swap re-applies after ANY rebuild. The callback
+       terminates: once the card reads My Holidays there is no
+       Notifications card left for the pass to rewrite. */
+    var holidayStripObserver = null;
+    var holidayStripObserved = null;
+    function installHolidayStripObserver() {
+        try {
+            var strip = document.getElementById("accDashboardStrip");
+            if (!strip || holidayStripObserved === strip) return;
+            if (holidayStripObserver) holidayStripObserver.disconnect();
+            holidayStripObserver = new MutationObserver(function () {
+                try { holidayStripPass(); } catch (_) {}
+            });
+            holidayStripObserver.observe(strip, { childList: true });
+            holidayStripObserved = strip;
+        } catch (_) {}
+    }
+
+    /* updateUserHeader triggers a premium refresh that rebuilds the
+       strip, so it needs the strip pass too. This wrapper loads after
+       premium's, so its pass timer lands after the rebuild timer. */
+    if (typeof updateUserHeader === "function") {
+        var origUpdateUserHeader = updateUserHeader;
+        updateUserHeader = function () {
+            var result = origUpdateUserHeader.apply(this, arguments);
+            try { holidayStripPassSoon(); } catch (_) {}
+            return result;
+        };
     }
 
     /* ------------------------------------------------------------------
