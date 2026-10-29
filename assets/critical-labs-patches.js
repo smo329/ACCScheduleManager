@@ -146,10 +146,21 @@
     m = document.createElement('div');
     m.id = 'myCriticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage, closest to the current week first. Request a 1:1 trade for any current or upcoming week.</p><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage, closest to the current week first. Request a 1:1 trade for any current or upcoming week.</p><div id="myCriticalLabsTradeWrap" style="display:none;text-align:right;margin:0 0 12px"><button type="button" class="modal-button save-button" id="myCriticalLabsTradeBtn">Request Trade</button><div id="myCriticalLabsTradeChooser" style="display:none;margin-top:8px"><label for="myCriticalLabsWeekSelect" style="color:#475569;font-size:13px;margin-right:8px">Week to trade</label><select id="myCriticalLabsWeekSelect"></select> <button type="button" class="modal-button save-button" id="myCriticalLabsTradeGo">Continue</button></div></div><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#myCriticalLabsClose').onclick = () => m.classList.remove('show');
+    m.querySelector('#myCriticalLabsTradeBtn').onclick = () => {
+      const c = m.querySelector('#myCriticalLabsTradeChooser');
+      if (c) c.style.display = c.style.display === 'none' ? 'block' : 'none';
+    };
+    m.querySelector('#myCriticalLabsTradeGo').onclick = () => {
+      const sel = m.querySelector('#myCriticalLabsWeekSelect');
+      const week = sel ? sel.value : '';
+      if (!week) return;
+      m.classList.remove('show');
+      try { window.openCriticalLabsTradePicker?.(week); } catch (_) {}
+    };
     return m;
   }
 
@@ -161,8 +172,13 @@
     const m = ensureMyCriticalLabsModal();
     const box = m.querySelector('#myCriticalLabsWeeks');
     const msg = m.querySelector('#myCriticalLabsMessage');
+    const tradeWrap = m.querySelector('#myCriticalLabsTradeWrap');
+    const tradeChooser = m.querySelector('#myCriticalLabsTradeChooser');
+    const tradeSelect = m.querySelector('#myCriticalLabsWeekSelect');
     msg.textContent = '';
     box.innerHTML = '<div class="my-schedule-empty">Loading coverage…</div>';
+    if (tradeWrap) tradeWrap.style.display = 'none';
+    if (tradeChooser) tradeChooser.style.display = 'none';
     m.classList.add('show');
     let rows = [];
     try {
@@ -193,16 +209,25 @@
       if (wa === wb) return 0;
       return aUp ? (wa < wb ? -1 : 1) : (wa < wb ? 1 : -1);
     });
+    /* One Request Trade button above the list: it offers only the
+       current and upcoming weeks, so the list rows carry no buttons
+       and no single week looks like the only tradable one. */
+    const tradable = rows.filter(r => String(r.week_start).slice(0, 10) >= thisSunday);
+    if (tradeWrap) {
+      if (tradable.length) {
+        tradeWrap.style.display = 'block';
+        if (tradeSelect) tradeSelect.innerHTML = tradable.map(r => {
+          const ws = String(r.week_start).slice(0, 10);
+          return `<option value="${esc(ws)}">${esc(weekLabel(ws))}</option>`;
+        }).join('');
+      } else {
+        tradeWrap.style.display = 'none';
+      }
+    }
     box.innerHTML = rows.map(r => {
       const ws = String(r.week_start).slice(0, 10);
-      const trade = ws >= thisSunday
-        ? `<button type="button" class="modal-button cancel-button" data-trade-week="${esc(ws)}">Request Trade</button>`
-        : '';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e2e8f0"><span style="font-weight:650;color:#17365d">${esc(weekLabel(ws))}</span>${trade}</div>`;
+      return `<div style="padding:10px 0;border-bottom:1px solid #e2e8f0"><span style="font-weight:650;color:#17365d">${esc(weekLabel(ws))}</span></div>`;
     }).join('');
-    box.querySelectorAll('[data-trade-week]').forEach(btn => {
-      btn.onclick = () => { try { window.openCriticalLabsTradePicker?.(btn.dataset.tradeWeek); } catch (_) {} };
-    });
   };
 
   /* ---- Admin panel: pick one person per week in the current quarter ---- */
