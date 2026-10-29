@@ -220,8 +220,8 @@
 })();
 
 (function () {
-  if (!document.querySelector('script[src="assets/employment-history-patches.js?v=20261021-3"]')) {
-    const script = document.createElement("script"); script.src = "assets/employment-history-patches.js?v=20261021-3"; script.defer = false; document.body.appendChild(script);
+  if (!document.querySelector('script[src="assets/employment-history-patches.js?v=20261029-1"]')) {
+    const script = document.createElement("script"); script.src = "assets/employment-history-patches.js?v=20261029-1"; script.defer = false; document.body.appendChild(script);
   }
 })();
 (function () {
