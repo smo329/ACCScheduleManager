@@ -6,7 +6,7 @@
     if(document.getElementById('employeeDashboardCleanupScript'))return;
     const s=document.createElement('script');
     s.id='employeeDashboardCleanupScript';
-    s.src='assets/employee-dashboard-cleanup.js?v=20261021-1';
+    s.src='assets/employee-dashboard-cleanup.js?v=20261029-1';
     document.body.appendChild(s);
   }
 
