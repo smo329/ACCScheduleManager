@@ -46,30 +46,36 @@ function improveCards(){
 
   if(role()==='employee'){
     if(cards[0]){
-      const label=cards[0].querySelector('.acc-stat-label');
-      if(label)label.textContent='Weeks';
-      actionCard(cards[0],scrollToQuarter,'View quarter weeks');
-    }
-    if(cards[1]){
-      actionCard(cards[1],scrollToWorkflow,'Go to current week schedule status');
-      const sub=cards[1].querySelector('.acc-stat-sub');
-      if(sub)sub.textContent='Tap to view current week';
-    }
-    if(cards[2]){
-      actionCard(cards[2],()=>window.openOpenShifts?.(),'Open Additional Shifts');
-      const sub=cards[2].querySelector('.acc-stat-sub');
+      actionCard(cards[0],()=>window.openOpenShifts?.(),'Open Additional Shifts');
+      const sub=cards[0].querySelector('.acc-stat-sub');
       if(sub)sub.textContent='Tap to browse shifts';
     }
+    if(cards[1]){
+      actionCard(cards[1],()=>window.openMySchedule?.(),'Open My Schedule');
+      const sub=cards[1].querySelector('.acc-stat-sub');
+      if(sub)sub.textContent='Tap to view your schedule';
+    }
+    if(cards[2]){
+      actionCard(cards[2],scrollToWorkflow,'Go to current week schedule status');
+      const sub=cards[2].querySelector('.acc-stat-sub');
+      if(sub)sub.textContent='Tap to view current week';
+    }
     if(cards[3]){
-      const icon=cards[3].querySelector('.acc-stat-icon');
+      /* The holiday patch turns this card into My Holidays for Turfland
+         employees and runs after the strip rebuild but before this pass,
+         so a card already labeled My Holidays must be left alone —
+         forcing it back to Notifications would undo that swap. */
       const label=cards[3].querySelector('.acc-stat-label');
-      const value=cards[3].querySelector('.acc-stat-value');
-      const sub=cards[3].querySelector('.acc-stat-sub');
-      if(icon)icon.textContent='🔔';
-      if(label)label.textContent='Notifications';
-      if(value)value.textContent='View';
-      if(sub)sub.textContent='Scheduling alerts';
-      actionCard(cards[3],()=>window.openNotificationCenter?.(),'Open notifications');
+      if(!label || label.textContent.trim()!=='My Holidays'){
+        const icon=cards[3].querySelector('.acc-stat-icon');
+        const value=cards[3].querySelector('.acc-stat-value');
+        const sub=cards[3].querySelector('.acc-stat-sub');
+        if(icon)icon.textContent='🔔';
+        if(label)label.textContent='Notifications';
+        if(value)value.textContent='View';
+        if(sub)sub.textContent='Scheduling alerts';
+        actionCard(cards[3],()=>window.openNotificationCenter?.(),'Open notifications');
+      }
     }
   } else {
     if(cards[0])actionCard(cards[0],()=>window.openOpenShifts?.(),'Open Additional Shifts');
