@@ -354,7 +354,7 @@
             .flex-leave-message{display:none;margin:10px 0 0;padding:10px 12px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-size:13px;font-weight:700;line-height:1.4}
             .schedule-cell{min-width:66px!important}.hours-column,.hours-cell{min-width:62px!important;width:62px!important}
             .schedule-hours-input{width:100%;text-align:center}.schedule-leave-display,.schedule-leave-value{background:#fef3c7!important;color:#92400e!important;font-weight:700}
-            .flex-admin-button{display:block;width:100%;margin-top:3px;padding:2px 3px;border:0;border-radius:4px;background:transparent;color:#64748b;font-size:10px;line-height:1.15;cursor:pointer}.flex-admin-button.is-admin{background:#dbeafe;color:#1e40af;font-weight:700}.schedule-admin-value{background:#dbeafe!important;color:#1e40af!important;font-weight:700}
+            .flex-admin-button{display:block;width:100%;margin-top:3px;padding:2px 3px;border:0;border-radius:4px;background:transparent;color:#64748b;font-size:10px;line-height:1.15;cursor:pointer}.flex-admin-button.is-admin{background:#dbeafe;color:#1e40af;font-weight:700}.schedule-admin-value{background:transparent!important;color:inherit!important;font-weight:inherit}
             @media(max-width:650px){.flex-leave-grid{grid-template-columns:1fr}}
         `;
         document.head.appendChild(style);
