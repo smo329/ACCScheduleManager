@@ -383,14 +383,32 @@
         };
     }
 
-    /* Employees propose trades; admins do not originate them. In view-as
-       mode the employee tabs stay hidden, so an admin viewing as someone
-       else can never act as them. */
+    /* Employees propose trades; admins do not originate them. View-as
+       uses isViewedTurflandEmployee instead, so an admin viewing as
+       someone else sees that person's holidays read-only and can never
+       act as them. */
     function isTurflandEmployee() {
         try {
             return !window.viewAsActive && currentProfile && currentProfile.role === "employee"
                 && currentProfile.clinic_site === "Turfland";
         } catch (_) { return false; }
+    }
+
+    /* In view-as mode the strip and the My Holidays tab mirror the
+       VIEWED person, not the admin: their id comes from currentProfile,
+       which view-as swaps to the viewed person's row. */
+    function isViewedTurflandEmployee() {
+        try {
+            return !!window.viewAsActive && currentProfile && currentProfile.role === "employee"
+                && currentProfile.clinic_site === "Turfland";
+        } catch (_) { return false; }
+    }
+
+    function holidayViewerId() {
+        try {
+            if (window.viewAsActive && currentProfile) return currentProfile.id || currentProfile.user_id || null;
+            return currentUser ? currentUser.id : null;
+        } catch (_) { return null; }
     }
 
     function setTabsForRole() {
@@ -425,7 +443,7 @@
     }
 
     function openHolidayModal() {
-        if (!isAdmin() && !isTurflandEmployee()) return;
+        if (!isAdmin() && !isTurflandEmployee() && !isViewedTurflandEmployee()) return;
         ensureStyles();
         ensureModal();
         setTabsForRole();
@@ -640,7 +658,7 @@
     function renderMyHolidaysTab() {
         var box = document.getElementById("holidayTabMyHolidays");
         if (!box) return;
-        var me = currentUser ? currentUser.id : null;
+        var me = holidayViewerId();
         if (!me) { box.textContent = "Sign in to see your holidays."; return; }
         var group = assignments[me + "|" + modalYear];
         var base = members[group] || [];
@@ -658,19 +676,20 @@
         var otherOpts = others.map(function (p) {
             return '<option value="' + esc(p.id) + '">' + esc(getProfileName(p)) + "</option>";
         }).join("");
-        box.innerHTML = "<p>Your holiday coverage for " + modalYear
-            + (group ? " (Group " + group + ")" : " — no group assigned yet; ask an admin to assign you.")
+        var canPropose = !!(group && !window.viewAsActive);
+        box.innerHTML = "<p>" + (window.viewAsActive ? esc(getProfileName(currentProfile)) + "'s holiday coverage for " : "Your holiday coverage for ") + modalYear
+            + (group ? " (Group " + group + ")" : (window.viewAsActive ? " — no group assigned yet." : " — no group assigned yet; ask an admin to assign you."))
             + "</p>"
             + '<table class="holiday-table"><tr><th>Holiday</th><th>Date</th><th>Type</th><th>How</th></tr>' + effRows + "</table>"
             + (away ? '<div class="holiday-note">Traded away: ' + away + ".</div>" : "")
-            + (group ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:640px;margin-top:14px">'
+            + (canPropose ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:640px;margin-top:14px">'
             + '<div class="form-group"><label>Offer one of my holidays</label><select id="myTradeMine"></select></div>'
             + '<div class="form-group"><label>Trade with</label><select id="myTradeWith">' + otherOpts + "</select></div>"
             + '<div class="form-group"><label>For their holiday</label><select id="myTradeTheirs"></select></div></div>'
             + '<button class="modal-button save-button" id="myTradeSend">Send trade request</button>'
             + '<div id="myTradeMsg" class="holiday-note"></div>'
             + '<div class="holiday-note">A 1:1 swap: you give one holiday and receive one. The other provider accepts or declines in Trade Center; on acceptance the two days swap on the schedule right away.</div>' : "");
-        if (!group) return;
+        if (!canPropose) return;
         var fillMine = function () {
             document.getElementById("myTradeMine").innerHTML = Object.keys(eff).map(function (k) {
                 return '<option value="' + esc(k) + '">' + esc(eff[k].name) + " (" + esc(eff[k].date) + ")</option>";
@@ -821,19 +840,20 @@
        after each render, so this runs both now and on the next tick. */
     function holidayStripInfo() {
         try {
-            if (!dataLoaded || !currentUser) return null;
+            if (!dataLoaded) return null;
+            var me = holidayViewerId();
+            if (!me) return null;
             var year = new Date().getFullYear();
-            var group = assignments[currentUser.id + "|" + year];
+            var group = assignments[me + "|" + year];
             if (!group) return null;
-            var eff = effectiveHolidaysFor(currentUser.id, year);
+            var eff = effectiveHolidaysFor(me, year);
             return { group: group, count: Object.keys(eff).length, year: year };
         } catch (_) { return null; }
     }
 
     function holidayStripPass() {
         try {
-            if (window.viewAsActive) return;
-            if (!isTurflandEmployee()) return;
+            if (!isTurflandEmployee() && !isViewedTurflandEmployee()) return;
             var strip = document.getElementById("accDashboardStrip");
             if (!strip) return;
             var info = holidayStripInfo();
