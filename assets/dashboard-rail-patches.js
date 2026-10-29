@@ -114,7 +114,11 @@ function renderAdminRail(rail){
 
 function renderPersonalRail(rail){
  const title=isExternal()?'My Additional Shifts':'My Schedule';
- rail.innerHTML=`<section class="rail-card"><div class="rail-title">${esc(title)}</div><div class="rail-personal-stat">40</div><div class="rail-personal-label">weekly target hours</div><button class="rail-primary" id="railMySchedule">View ${esc(title)}</button></section>${isExternal()?'':pickingCardHtml()}<section class="rail-card"><div class="rail-title">Quick Actions</div><div id="railQuickActions"></div></section><section class="rail-card"><div class="rail-title">Need something?</div><div class="rail-subtle">Message the admins about scheduling, shifts, or anything else you need.</div><button class="rail-primary" id="railMessageAdmins">Message Admins</button></section>`;
+ /* The strip now carries a My Schedule card for employees, so the
+    far-right My Schedule rail card is redundant for them. Externals
+    keep it: their strip has no My Schedule card. */
+ const firstCard=isExternal()?`<section class="rail-card"><div class="rail-title">${esc(title)}</div><div class="rail-personal-stat">40</div><div class="rail-personal-label">weekly target hours</div><button class="rail-primary" id="railMySchedule">View ${esc(title)}</button></section>`:'';
+ rail.innerHTML=`${firstCard}${isExternal()?'':pickingCardHtml()}<section class="rail-card"><div class="rail-title">Quick Actions</div><div id="railQuickActions"></div></section><section class="rail-card"><div class="rail-title">Need something?</div><div class="rail-subtle">Message the admins about scheduling, shifts, or anything else you need.</div><button class="rail-primary" id="railMessageAdmins">Message Admins</button></section>`;
  rail.querySelector('#railMySchedule')?.addEventListener('click',()=>window.openMySchedule?.());
  bindPickingCard(rail);
  rail.querySelector('#railMessageAdmins')?.addEventListener('click',()=>window.openMessageAdmins?.());
