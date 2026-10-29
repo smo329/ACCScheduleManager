@@ -129,7 +129,7 @@
                     supabaseClient.from("holiday_definitions").select("key,name,is_official"),
                     supabaseClient.from("holiday_group_members").select("group_number,holiday_key"),
                     supabaseClient.from("provider_holiday_groups").select("user_id,year,group_number"),
-                    supabaseClient.from("holiday_trades").select("id,year,from_user_id,from_holiday_key,to_user_id,to_holiday_key"),
+                    supabaseClient.from("holiday_trades").select("id,year,from_user_id,from_holiday_key,to_user_id,to_holiday_key,status,responded_at"),
                     supabaseClient.from("holiday_prefills").select("user_id,holiday_key,year,holiday_date,is_official")
                 ]);
                 if (results[0].data && results[0].data.length) {
@@ -183,7 +183,12 @@
                 date: holidayDate(key, year)
             };
         });
-        trades.filter(function (t) { return t.year === year; }).forEach(function (t) {
+        /* Only ACCEPTED trades are effective. Pending requests and
+           declines never move coverage; rows without a status (pre-
+           revision data) are treated as accepted. */
+        trades.filter(function (t) {
+            return t.year === year && t.status !== "pending" && t.status !== "declined";
+        }).forEach(function (t) {
             if (t.from_user_id === userId) {
                 delete out[t.from_holiday_key];
                 out[t.to_holiday_key] = {
@@ -281,6 +286,7 @@
                     holidayPostPass();
                 }
             } catch (e) { console.warn("Holiday post-pass failed", e); }
+            try { ensureHeaderHolidayButton(); } catch (_) {}
             return result;
         };
     }
@@ -346,9 +352,13 @@
             + '<select id="holidayYearSelect"></select></div>'
             + '<div class="holiday-tabs"><button type="button" class="holiday-tab active" data-tab="assign">Assignments</button>'
             + '<button type="button" class="holiday-tab" data-tab="trades">Trades</button>'
-            + '<button type="button" class="holiday-tab" data-tab="history">History</button></div>'
+            + '<button type="button" class="holiday-tab" data-tab="history">History</button>'
+            + '<button type="button" class="holiday-tab" data-tab="myHolidays" style="display:none">My Holidays</button>'
+            + '<button type="button" class="holiday-tab" data-tab="myRequests" style="display:none">My Requests</button></div>'
             + '<div id="holidayTabAssign"></div><div id="holidayTabTrades" style="display:none"></div>'
             + '<div id="holidayTabHistory" style="display:none"></div>'
+            + '<div id="holidayTabMyHolidays" style="display:none"></div>'
+            + '<div id="holidayTabMyRequests" style="display:none"></div>'
             + '</div><div class="modal-footer"><button class="modal-button cancel-button" id="holidayModalDone">Close</button></div></div>';
         document.body.appendChild(m);
         document.getElementById("holidayModalClose").onclick = closeHolidayModal;
@@ -357,31 +367,73 @@
             b.onclick = function () {
                 m.querySelectorAll(".holiday-tab").forEach(function (x) { x.classList.remove("active"); });
                 b.classList.add("active");
-                ["assign", "trades", "history"].forEach(function (t) {
-                    document.getElementById("holidayTab" + t.charAt(0).toUpperCase() + t.slice(1)).style.display =
-                        (t === b.dataset.tab ? "" : "none");
+                m.querySelectorAll(".holiday-tab").forEach(function (x) {
+                    var t = x.dataset.tab;
+                    var div = document.getElementById("holidayTab" + t.charAt(0).toUpperCase() + t.slice(1));
+                    if (div) div.style.display = (t === b.dataset.tab ? "" : "none");
                 });
                 if (b.dataset.tab === "history") renderHistoryTab();
+                if (b.dataset.tab === "myHolidays") renderMyHolidaysTab();
+                if (b.dataset.tab === "myRequests") renderMyRequestsTab();
             };
         });
         var ys = document.getElementById("holidayYearSelect");
         ys.innerHTML = yearOptions(modalYear);
         ys.onchange = function () {
             modalYear = Number(ys.value);
-            renderAssignTab();
-            renderTradesTab();
-            if (document.getElementById("holidayTabHistory").style.display !== "none") renderHistoryTab();
+            renderAllTabs();
         };
     }
 
-    function openHolidayModal() {
-        if (!isAdmin()) return;
-        ensureStyles();
-        ensureModal();
-        loadHolidayData().then(function () {
+    /* Employees propose trades; admins do not originate them. In view-as
+       mode the employee tabs stay hidden, so an admin viewing as someone
+       else can never act as them. */
+    function isTurflandEmployee() {
+        try {
+            return !window.viewAsActive && currentProfile && currentProfile.role === "employee"
+                && currentProfile.clinic_site === "Turfland";
+        } catch (_) { return false; }
+    }
+
+    function setTabsForRole() {
+        var m = document.getElementById("holidayModal");
+        if (!m) return;
+        var admin = isAdmin();
+        var show = function (tab, visible) {
+            m.querySelectorAll('[data-tab="' + tab + '"]').forEach(function (b) {
+                b.style.display = visible ? "" : "none";
+            });
+        };
+        show("assign", admin);
+        show("trades", admin);
+        show("history", admin);
+        show("myHolidays", !admin);
+        show("myRequests", !admin);
+        var active = admin ? "assign" : "myHolidays";
+        m.querySelectorAll(".holiday-tab").forEach(function (b) {
+            b.classList.toggle("active", b.dataset.tab === active);
+            var div = document.getElementById("holidayTab" + b.dataset.tab.charAt(0).toUpperCase() + b.dataset.tab.slice(1));
+            if (div) div.style.display = (b.dataset.tab === active ? "" : "none");
+        });
+    }
+
+    function renderAllTabs() {
+        if (isAdmin()) {
             renderAssignTab();
             renderTradesTab();
-        });
+            if (document.getElementById("holidayTabHistory").style.display !== "none") renderHistoryTab();
+        } else {
+            renderMyHolidaysTab();
+            renderMyRequestsTab();
+        }
+    }
+
+    function openHolidayModal() {
+        if (!isAdmin() && !isTurflandEmployee()) return;
+        ensureStyles();
+        ensureModal();
+        setTabsForRole();
+        loadHolidayData().then(renderAllTabs);
         document.getElementById("holidayModal").style.display = "flex";
     }
 
@@ -513,10 +565,12 @@
         var list = trades.filter(function (t) { return t.year === modalYear; }).map(function (t) {
             return "<tr><td>" + esc(profileName(t.from_user_id)) + " gave " + esc((defs[t.from_holiday_key] || {}).name || t.from_holiday_key)
                 + "</td><td>" + esc(profileName(t.to_user_id)) + " gave " + esc((defs[t.to_holiday_key] || {}).name || t.to_holiday_key)
-                + '</td><td><button class="modal-button cancel-button" data-trade-del="' + esc(t.id) + '">Undo</button></td></tr>';
-        }).join("") || '<tr><td colspan="3">No trades recorded for ' + modalYear + ".</td></tr>";
+                + "</td><td>" + esc(t.status || "accepted") + "</td>"
+                + '<td><button class="modal-button cancel-button" data-trade-del="' + esc(t.id) + '">Undo</button></td></tr>';
+        }).join("") || '<tr><td colspan="4">No trades recorded for ' + modalYear + ".</td></tr>";
         box.innerHTML = "<p>Holiday trades are 1:1 swaps for one year: each side gives one holiday and receives one. "
-            + "Record the trade here, then re-apply holidays for " + modalYear + " to update the schedule.</p>"
+            + "Trades recorded here take effect immediately (re-apply holidays for " + modalYear + " to update the schedule). "
+            + "Employee requests appear here as Pending until the target accepts or declines.</p>"
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:640px">'
             + '<div class="form-group"><label>Giver</label><select id="tradeFromUser">' + opts + "</select></div>"
             + '<div class="form-group"><label>Giver gives</label><select id="tradeFromHoliday"></select></div>'
@@ -524,7 +578,7 @@
             + '<div class="form-group"><label>Receiver gives</label><select id="tradeToHoliday"></select></div></div>'
             + '<button class="modal-button save-button" id="holidayRecordTrade">Record trade</button>'
             + '<div id="holidayTradeMsg" class="holiday-note"></div>'
-            + '<table class="holiday-table" style="margin-top:14px"><tr><th>Giver</th><th>Receiver</th><th></th></tr>' + list + "</table>";
+            + '<table class="holiday-table" style="margin-top:14px"><tr><th>Giver</th><th>Receiver</th><th>Status</th><th></th></tr>' + list + "</table>";
         var fillHolidaySelects = function () {
             var fu = document.getElementById("tradeFromUser").value;
             var tu = document.getElementById("tradeToUser").value;
@@ -560,7 +614,7 @@
             }
             var res = await supabaseClient.from("holiday_trades").insert({
                 year: modalYear, from_user_id: fu, from_holiday_key: fh,
-                to_user_id: tu, to_holiday_key: th, created_by: currentUser.id
+                to_user_id: tu, to_holiday_key: th, status: "accepted", created_by: currentUser.id
             });
             if (res.error) { m.textContent = "Trade failed: " + res.error.message; return; }
             m.textContent = "Trade recorded. Re-apply holidays for " + modalYear + " to update the schedule.";
@@ -581,6 +635,138 @@
         if (code === "A4") return 0;
         var n = Number(code);
         return Number.isFinite(n) ? n : 0;
+    }
+
+    /* ------------------------------------------------------------------
+       Employee tabs: My Holidays (own coverage + propose a trade) and
+       My Requests (incoming pending trades to accept/decline, outgoing
+       pending trades to cancel). Acceptance runs the RPC, which swaps
+       the two days on the schedule immediately.
+       ------------------------------------------------------------------ */
+    function renderMyHolidaysTab() {
+        var box = document.getElementById("holidayTabMyHolidays");
+        if (!box) return;
+        var me = currentUser ? currentUser.id : null;
+        if (!me) { box.textContent = "Sign in to see your holidays."; return; }
+        var group = assignments[me + "|" + modalYear];
+        var base = members[group] || [];
+        var eff = effectiveHolidaysFor(me, modalYear);
+        var effRows = Object.keys(eff).map(function (k) {
+            var traded = base.indexOf(k) === -1;
+            return "<tr><td><strong>" + esc(eff[k].name) + "</strong></td><td>" + esc(eff[k].date) + "</td>"
+                + "<td>" + (eff[k].isOfficial ? "Official (8 + leave)" : "Non-observed (12)") + "</td>"
+                + "<td>" + (traded ? "Received in trade" : "Group " + group) + "</td></tr>";
+        }).join("") || '<tr><td colspan="4">No holidays assigned.</td></tr>';
+        var away = base.filter(function (k) { return !eff[k]; }).map(function (k) {
+            return esc((defs[k] || {}).name || k);
+        }).join(", ");
+        var others = turflandEmployees().filter(function (p) { return p.id !== me; });
+        var otherOpts = others.map(function (p) {
+            return '<option value="' + esc(p.id) + '">' + esc(getProfileName(p)) + "</option>";
+        }).join("");
+        box.innerHTML = "<p>Your holiday coverage for " + modalYear
+            + (group ? " (Group " + group + ")" : " — no group assigned yet; ask an admin to assign you.")
+            + "</p>"
+            + '<table class="holiday-table"><tr><th>Holiday</th><th>Date</th><th>Type</th><th>How</th></tr>' + effRows + "</table>"
+            + (away ? '<div class="holiday-note">Traded away: ' + away + ".</div>" : "")
+            + (group ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:640px;margin-top:14px">'
+            + '<div class="form-group"><label>Offer one of my holidays</label><select id="myTradeMine"></select></div>'
+            + '<div class="form-group"><label>Trade with</label><select id="myTradeWith">' + otherOpts + "</select></div>"
+            + '<div class="form-group"><label>For their holiday</label><select id="myTradeTheirs"></select></div></div>'
+            + '<button class="modal-button save-button" id="myTradeSend">Send trade request</button>'
+            + '<div id="myTradeMsg" class="holiday-note"></div>'
+            + '<div class="holiday-note">A 1:1 swap: you give one holiday and receive one. The other provider accepts or declines; on acceptance the two days swap on the schedule right away.</div>' : "");
+        if (!group) return;
+        var fillMine = function () {
+            document.getElementById("myTradeMine").innerHTML = Object.keys(eff).map(function (k) {
+                return '<option value="' + esc(k) + '">' + esc(eff[k].name) + " (" + esc(eff[k].date) + ")</option>";
+            }).join("");
+        };
+        var fillTheirs = function () {
+            var uid = document.getElementById("myTradeWith").value;
+            var theirs = effectiveHolidaysFor(uid, modalYear);
+            document.getElementById("myTradeTheirs").innerHTML = Object.keys(theirs).map(function (k) {
+                return '<option value="' + esc(k) + '">' + esc(theirs[k].name) + " (" + esc(theirs[k].date) + ")</option>";
+            }).join("") || '<option value="">(no holidays assigned)</option>';
+        };
+        fillMine();
+        fillTheirs();
+        document.getElementById("myTradeWith").onchange = fillTheirs;
+        document.getElementById("myTradeSend").onclick = async function () {
+            var m = document.getElementById("myTradeMsg");
+            var mh = document.getElementById("myTradeMine").value;
+            var tu = document.getElementById("myTradeWith").value;
+            var th = document.getElementById("myTradeTheirs").value;
+            if (!mh || !tu || !th) { m.textContent = "Pick your holiday, the other provider, and their holiday."; return; }
+            if (mh === th) { m.textContent = "A trade needs two different holidays."; return; }
+            if (!effectiveHolidaysFor(me, modalYear)[mh]) { m.textContent = "You no longer hold that holiday."; return; }
+            if (!effectiveHolidaysFor(tu, modalYear)[th]) { m.textContent = "They no longer hold that holiday."; return; }
+            var res = await supabaseClient.from("holiday_trades").insert({
+                year: modalYear, from_user_id: me, from_holiday_key: mh,
+                to_user_id: tu, to_holiday_key: th, status: "pending", created_by: me
+            });
+            if (res.error) { m.textContent = "Request failed: " + res.error.message; return; }
+            m.textContent = "Trade request sent.";
+            await loadHolidayData();
+            renderAllTabs();
+        };
+    }
+
+    function renderMyRequestsTab() {
+        var box = document.getElementById("holidayTabMyRequests");
+        if (!box) return;
+        var me = currentUser ? currentUser.id : null;
+        if (!me) { box.textContent = "Sign in to see your requests."; return; }
+        var incoming = trades.filter(function (t) { return t.to_user_id === me && t.status === "pending"; });
+        var outgoing = trades.filter(function (t) { return t.from_user_id === me && t.status === "pending"; });
+        var inRows = incoming.map(function (t) {
+            return "<tr><td>" + esc(profileName(t.from_user_id)) + " offers " + esc((defs[t.from_holiday_key] || {}).name || t.from_holiday_key)
+                + "</td><td>for your " + esc((defs[t.to_holiday_key] || {}).name || t.to_holiday_key) + " (" + t.year + ")</td>"
+                + '<td><button class="modal-button save-button" data-trade-accept="' + esc(t.id) + '">Accept</button> '
+                + '<button class="modal-button cancel-button" data-trade-decline="' + esc(t.id) + '">Decline</button></td></tr>';
+        }).join("") || '<tr><td colspan="3">No incoming requests.</td></tr>';
+        var outRows = outgoing.map(function (t) {
+            return "<tr><td>You offered " + esc((defs[t.from_holiday_key] || {}).name || t.from_holiday_key)
+                + "</td><td>for " + esc(profileName(t.to_user_id)) + "'s " + esc((defs[t.to_holiday_key] || {}).name || t.to_holiday_key) + " (" + t.year + ")</td>"
+                + '<td><button class="modal-button cancel-button" data-trade-cancel="' + esc(t.id) + '">Cancel</button></td></tr>';
+        }).join("") || '<tr><td colspan="3">No outgoing requests.</td></tr>';
+        box.innerHTML = '<div id="myRequestsMsg" class="holiday-note"></div>'
+            + "<p><strong>Incoming requests</strong></p>"
+            + '<table class="holiday-table"><tr><th>Offer</th><th>For</th><th></th></tr>' + inRows + "</table>"
+            + "<p style=\"margin-top:14px\"><strong>Outgoing requests</strong></p>"
+            + '<table class="holiday-table"><tr><th>Offer</th><th>For</th><th></th></tr>' + outRows + "</table>";
+        var msg = document.getElementById("myRequestsMsg");
+        box.querySelectorAll("[data-trade-accept]").forEach(function (b) {
+            b.onclick = async function () {
+                var res = await supabaseClient.rpc("accept_holiday_trade", { p_trade_id: b.dataset.tradeAccept });
+                if (res.error) { msg.textContent = "Accept failed: " + res.error.message; return; }
+                msg.textContent = "Trade accepted — the two days swapped on the schedule.";
+                await loadHolidayData();
+                renderAllTabs();
+                if (typeof loadWeek === "function") { try { await loadWeek(); } catch (_) {} }
+            };
+        });
+        box.querySelectorAll("[data-trade-decline]").forEach(function (b) {
+            b.onclick = async function () {
+                var res = await supabaseClient.from("holiday_trades")
+                    .update({ status: "declined", responded_at: new Date().toISOString() })
+                    .eq("id", b.dataset.tradeDecline).eq("to_user_id", me).eq("status", "pending");
+                if (res.error) { msg.textContent = "Decline failed: " + res.error.message; return; }
+                msg.textContent = "Trade declined.";
+                await loadHolidayData();
+                renderAllTabs();
+            };
+        });
+        box.querySelectorAll("[data-trade-cancel]").forEach(function (b) {
+            b.onclick = async function () {
+                var res = await supabaseClient.from("holiday_trades")
+                    .delete().eq("id", b.dataset.tradeCancel).eq("from_user_id", me).eq("status", "pending");
+                if (res.error) { msg.textContent = "Cancel failed: " + res.error.message; return; }
+                msg.textContent = "Request cancelled.";
+                await loadHolidayData();
+                renderAllTabs();
+            };
+        });
     }
 
     async function renderHistoryTab() {
@@ -689,6 +875,23 @@
         modeSel.onchange = render;
         provSel.onchange = render;
         render();
+    }
+
+    /* Header entry point for Turfland employees: a My Holidays button
+       next to the week buttons. It appears once signed in and hides in
+       view-as mode and for anyone who is not a Turfland employee. */
+    function ensureHeaderHolidayButton() {
+        var weekRight = document.querySelector(".week-right");
+        var btn = document.getElementById("holidayHeaderButton");
+        if (!isTurflandEmployee()) { if (btn) btn.remove(); return; }
+        if (!weekRight || btn) return;
+        btn = document.createElement("button");
+        btn.id = "holidayHeaderButton";
+        btn.type = "button";
+        btn.className = "week-button";
+        btn.textContent = "My Holidays";
+        btn.onclick = openHolidayModal;
+        weekRight.appendChild(btn);
     }
 
     /* ------------------------------------------------------------------
