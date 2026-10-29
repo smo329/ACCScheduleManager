@@ -106,6 +106,49 @@
     }
   }
 
+  /* ---- Holiday trades: pending requests live in Trade Center only.
+   * Turfland employees propose from My Holidays; incoming/outgoing
+   * requests are managed here. Acceptance runs the holiday accept RPC,
+   * which swaps the two days on the schedule immediately. ---- */
+  const isTurflandEmployee = () => { try { return !isViewAs() && currentProfile?.role === 'employee' && currentProfile?.clinic_site === 'Turfland'; } catch (_) { return false; } };
+
+  async function loadHolidayTrades() {
+    const uid = me();
+    if (!uid) return { trades: [], names: {} };
+    try {
+      const [tRes, dRes] = await Promise.all([
+        supabaseClient.from('holiday_trades')
+          .select('id,year,from_user_id,from_holiday_key,to_user_id,to_holiday_key,status,responded_at,created_at')
+          .or(`from_user_id.eq.${uid},to_user_id.eq.${uid}`)
+          .order('created_at', { ascending: false }).limit(100),
+        supabaseClient.from('holiday_definitions').select('key,name')
+      ]);
+      if (tRes.error) throw tRes.error;
+      const names = {};
+      (dRes.data || []).forEach(d => { names[d.key] = d.name; });
+      return { trades: tRes.data || [], names };
+    } catch (e) {
+      console.warn('Holiday trade load failed:', e);
+      return { trades: [], names: {} };
+    }
+  }
+
+  function holidayTradeCard(t, direction, names) {
+    const otherId = direction === 'incoming' ? t.from_user_id : t.to_user_id;
+    const other = personName(personById(otherId));
+    const yourKey = direction === 'incoming' ? t.to_holiday_key : t.from_holiday_key;
+    const theirKey = direction === 'incoming' ? t.from_holiday_key : t.to_holiday_key;
+    const yourSide = `${names[yourKey] || yourKey} (${t.year})`;
+    const theirSide = `${names[theirKey] || theirKey} (${t.year})`;
+    let actions = '';
+    if (t.status === 'pending' && direction === 'incoming') {
+      actions = `<div class="trade-card-actions"><button class="modal-button save-button" type="button" data-holiday-accept="${esc(t.id)}">Accept Trade</button><button class="modal-button cancel-button" type="button" data-holiday-decline="${esc(t.id)}">Decline</button></div>`;
+    } else if (t.status === 'pending' && direction === 'outgoing') {
+      actions = `<div class="trade-card-actions"><button class="modal-button cancel-button" type="button" data-holiday-cancel="${esc(t.id)}">Cancel Request</button></div>`;
+    }
+    return `<div class="trade-card" data-trade-id="${esc(t.id)}"><div class="trade-card-title">Holiday swap · <span class="trade-status ${esc(t.status)}">Pending</span></div><div class="trade-card-body">With <strong>${esc(other)}</strong><br>Your side: <strong>${esc(yourSide)}</strong><br>Their side: <strong>${esc(theirSide)}</strong></div><div class="trade-card-meta">Requested ${esc(fmtDate(String(t.created_at).slice(0, 10)))}${t.responded_at ? ` · Responded ${esc(fmtDate(String(t.responded_at).slice(0, 10)))}` : ''}</div>${actions}</div>`;
+  }
+
   function sideLabel(t, which) {
     if (t.trade_type === 'critical_labs') {
       const w = which === 'from' ? t.from_week_start : t.to_week_start;
@@ -165,7 +208,7 @@
     m = document.createElement('div');
     m.id = 'tradeCenterModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Trade Center</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="tradeCenterMessage" class="trade-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">All trades are 1:1 swaps — you give a day and take a day. A trade only moves when the other person accepts it. Admins are notified when a trade is accepted.</p><div id="tradeCenterProposeWrap" style="margin-bottom:14px"></div><h3 style="color:#17365d;font-size:14px;margin:14px 0 8px">Incoming requests</h3><div id="tradeCenterIncoming"></div><h3 style="color:#17365d;font-size:14px;margin:14px 0 8px">Outgoing requests</h3><div id="tradeCenterOutgoing"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="tradeCenterClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Trade Center</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="tradeCenterMessage" class="trade-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">All trades are 1:1 swaps — you give a day and take a day. A trade only moves when the other person accepts it. Admins are notified when a trade is accepted.</p><div id="tradeCenterProposeWrap" style="margin-bottom:14px"></div><h3 style="color:#17365d;font-size:14px;margin:14px 0 8px">Incoming requests</h3><div id="tradeCenterIncoming"></div><h3 style="color:#17365d;font-size:14px;margin:14px 0 8px">Outgoing requests</h3><div id="tradeCenterOutgoing"></div><div id="tradeCenterHolidaySection"><h3 style="color:#17365d;font-size:14px;margin:14px 0 8px">Holiday trades</h3><p style="color:#475569;font-size:13px;margin:0 0 12px">Holiday swaps are 1:1 like other trades. Propose one from My Holidays; on acceptance the two days swap on the schedule right away.</p><h4 style="color:#17365d;font-size:13px;margin:10px 0 8px">Incoming</h4><div id="tradeCenterHolidayIncoming"></div><h4 style="color:#17365d;font-size:13px;margin:10px 0 8px">Outgoing</h4><div id="tradeCenterHolidayOutgoing"></div></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="tradeCenterClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#tradeCenterClose').onclick = () => m.classList.remove('show');
@@ -191,11 +234,31 @@
     const outgoing = trades.filter(t => t.from_user_id === uid);
     incomingBox.innerHTML = incoming.length ? incoming.map(t => tradeCard(t, 'incoming')).join('') : '<div class="trade-empty">No incoming trade requests.</div>';
     outgoingBox.innerHTML = outgoing.length ? outgoing.map(t => tradeCard(t, 'outgoing')).join('') : '<div class="trade-empty">No outgoing trade requests.</div>';
+    const holSection = document.getElementById('tradeCenterHolidaySection');
+    if (holSection) {
+      if (!isTurflandEmployee()) {
+        holSection.style.display = 'none';
+      } else {
+        holSection.style.display = '';
+        const holIn = document.getElementById('tradeCenterHolidayIncoming');
+        const holOut = document.getElementById('tradeCenterHolidayOutgoing');
+        if (holIn) holIn.innerHTML = '<div class="trade-empty">Loading…</div>';
+        if (holOut) holOut.innerHTML = '<div class="trade-empty">Loading…</div>';
+        const { trades: holTrades, names } = await loadHolidayTrades();
+        const holIncoming = holTrades.filter(t => t.to_user_id === uid && t.status === 'pending');
+        const holOutgoing = holTrades.filter(t => t.from_user_id === uid && t.status === 'pending');
+        if (holIn) holIn.innerHTML = holIncoming.length ? holIncoming.map(t => holidayTradeCard(t, 'incoming', names)).join('') : '<div class="trade-empty">No incoming holiday requests.</div>';
+        if (holOut) holOut.innerHTML = holOutgoing.length ? holOutgoing.map(t => holidayTradeCard(t, 'outgoing', names)).join('') : '<div class="trade-empty">No outgoing holiday requests.</div>';
+      }
+    }
     const modal = document.getElementById('tradeCenterModal');
     if (!modal) return;
     modal.querySelectorAll('[data-trade-accept]').forEach(b => b.onclick = () => actOnTrade(b.dataset.tradeAccept, 'accept'));
     modal.querySelectorAll('[data-trade-decline]').forEach(b => b.onclick = () => actOnTrade(b.dataset.tradeDecline, 'decline'));
     modal.querySelectorAll('[data-trade-cancel]').forEach(b => b.onclick = () => actOnTrade(b.dataset.tradeCancel, 'cancel'));
+    modal.querySelectorAll('[data-holiday-accept]').forEach(b => b.onclick = () => actOnHolidayTrade(b.dataset.holidayAccept, 'accept'));
+    modal.querySelectorAll('[data-holiday-decline]').forEach(b => b.onclick = () => actOnHolidayTrade(b.dataset.holidayDecline, 'decline'));
+    modal.querySelectorAll('[data-holiday-cancel]').forEach(b => b.onclick = () => actOnHolidayTrade(b.dataset.holidayCancel, 'cancel'));
   }
 
   async function actOnTrade(id, action) {
@@ -228,6 +291,36 @@
       showMessage(/relation .* does not exist|function .* does not exist|Could not find/i.test(String(e?.message || e))
         ? 'Trade requests are not set up yet — the Trade Center database tables still need to be applied.'
         : (e?.message || 'That trade action could not be completed.'));
+      await refreshLists();
+    }
+  }
+
+  async function actOnHolidayTrade(id, action) {
+    showMessage('', '');
+    try {
+      if (action === 'accept') {
+        const { error } = await supabaseClient.rpc('accept_holiday_trade', { p_trade_id: id });
+        if (error) throw error;
+        showMessage('Holiday trade accepted. Both days have been swapped.', 'success');
+      } else if (action === 'decline') {
+        const { error } = await supabaseClient.from('holiday_trades')
+          .update({ status: 'declined', responded_at: new Date().toISOString() })
+          .eq('id', id).eq('to_user_id', me()).eq('status', 'pending');
+        if (error) throw error;
+        showMessage('Holiday trade declined.', 'success');
+      } else {
+        const { error } = await supabaseClient.from('holiday_trades')
+          .delete().eq('id', id).eq('from_user_id', me()).eq('status', 'pending');
+        if (error) throw error;
+        showMessage('Holiday trade request cancelled.', 'success');
+      }
+      await refreshLists();
+      try { if (typeof loadWeek === 'function') await loadWeek(); } catch (_) {}
+    } catch (e) {
+      console.warn('Holiday trade action failed:', e);
+      showMessage(/relation .* does not exist|function .* does not exist|Could not find/i.test(String(e?.message || e))
+        ? 'Holiday trades are not set up yet — the holiday database tables still need to be applied.'
+        : (e?.message || 'That holiday trade action could not be completed.'));
       await refreshLists();
     }
   }
