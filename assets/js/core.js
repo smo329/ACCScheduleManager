@@ -1702,6 +1702,8 @@ function renderQuarterNavigator() {
                             weekStart
                         );
 
+                    syncQuarterSelectionToCurrentWeek();
+
                     await loadWeek();
                 };
 
