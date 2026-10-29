@@ -903,7 +903,9 @@ async function renderQuarterDashboard() {
 
     const [
         schedulesResult,
-        capacityResult
+        capacityResult,
+        adminResult,
+        leaveResult
     ] =
         await Promise.all([
 
@@ -938,6 +940,40 @@ async function renderQuarterDashboard() {
                 .lte(
                     "capacity_date",
                     adminSchedulingPeriod.period_end
+                ),
+
+            supabaseClient
+                .from("schedule_admin_hours")
+                .select(`
+                    user_id,
+                    admin_date,
+                    admin_hours
+                `)
+                .gte(
+                    "admin_date",
+                    adminSchedulingPeriod.period_start
+                )
+                .lte(
+                    "admin_date",
+                    adminSchedulingPeriod.period_end
+                ),
+
+            supabaseClient
+                .from("schedule_leave_hours")
+                .select(`
+                    user_id,
+                    leave_date,
+                    vacation_hours,
+                    professional_leave_hours,
+                    tdl_hours
+                `)
+                .gte(
+                    "leave_date",
+                    adminSchedulingPeriod.period_start
+                )
+                .lte(
+                    "leave_date",
+                    adminSchedulingPeriod.period_end
                 )
         ]);
 
@@ -958,6 +994,54 @@ async function renderQuarterDashboard() {
 
     const quarterRows =
         schedulesResult.data || [];
+
+    /* Admin pieces and leave hours per user+date, so the
+       40-hour counter credits the same hours the submit
+       gate does. A failed extra query degrades to the old
+       worked-hours-only count, like the capacity fallback. */
+    const adminHoursByUserDate =
+        new Map();
+
+    (
+        adminResult.error
+            ? []
+            : (adminResult.data || [])
+    ).forEach(
+        row =>
+            adminHoursByUserDate.set(
+                row.user_id +
+                    "|" +
+                    row.admin_date,
+                Number(
+                    row.admin_hours || 0
+                )
+            )
+    );
+
+    const leaveHoursByUserDate =
+        new Map();
+
+    (
+        leaveResult.error
+            ? []
+            : (leaveResult.data || [])
+    ).forEach(
+        row =>
+            leaveHoursByUserDate.set(
+                row.user_id +
+                    "|" +
+                    row.leave_date,
+                Number(
+                    row.vacation_hours || 0
+                ) +
+                Number(
+                    row.professional_leave_hours || 0
+                ) +
+                Number(
+                    row.tdl_hours || 0
+                )
+            )
+    );
 
     const capacityRows =
         capacityResult.error
@@ -998,45 +1082,59 @@ async function renderQuarterDashboard() {
         weekStart
     ) {
 
-        const startKey =
-            getDateKey(
-                weekStart
+        /* Same credited total the submit gate uses: worked
+           hours plus the Admin piece plus leave hours, with
+           each day capped at 12. */
+        let total = 0;
+
+        for (
+            let i = 0;
+            i < 7;
+            i++
+        ) {
+
+            const date =
+                new Date(
+                    weekStart
+                );
+
+            date.setDate(
+                date.getDate() + i
             );
 
-        const endDate =
-            new Date(
-                weekStart
-            );
+            const dateKey =
+                getDateKey(
+                    date
+                );
 
-        endDate.setDate(
-            endDate.getDate() + 6
-        );
+            const row =
+                rowsForUser(
+                    userId
+                ).find(
+                    item =>
+                        item.schedule_date ===
+                            dateKey
+                );
 
-        const endKey =
-            getDateKey(
-                endDate
-            );
+            total +=
+                quarterDayCreditedHours(
+                    row
+                        ? row.schedule_code
+                        : "0",
+                    adminHoursByUserDate.get(
+                        userId +
+                            "|" +
+                            dateKey
+                    ) || 0,
+                    leaveHoursByUserDate.get(
+                        userId +
+                            "|" +
+                            dateKey
+                    ) || 0
+                );
+        }
 
-        return rowsForUser(
-            userId
-        )
-        .filter(
-            row =>
-                row.schedule_date >=
-                    startKey &&
-                row.schedule_date <=
-                    endKey
-        )
-        .reduce(
-            (sum, row) =>
-                sum +
-                (
-                    codeHours[
-                        row.schedule_code
-                    ] || 0
-                ),
-            0
-        );
+        return total;
     }
 
     function weekendCount(
@@ -2322,6 +2420,7 @@ function renderWorkflowPanel() {
         getPeriodMonthKeys();
 
     const ownWeekendSummary =
+        currentProfile.role !== "admin" &&
         currentProfile.clinic_site ===
             "Turfland" &&
         activeSchedulingPeriod
@@ -2751,6 +2850,8 @@ function openQuarterModal(
                                     weekStart
                                 )
                             );
+
+                        syncQuarterSelectionToCurrentWeek();
 
                         await loadWeek();
                     }
@@ -3482,6 +3583,21 @@ async function submitQuarter() {
             ? waiting[0]
             : null;
 
+    /* Turfland queue rule: only the first two pickers may be
+       open together; otherwise one picker at a time. When
+       another Turfland picker is still open, this submit
+       closes the submitter without opening anyone new, so
+       the confirm modal must not name a next picker. */
+    const anotherPickerOpen =
+        holderClinic === "Turfland" &&
+        (accessResult.data || []).some(
+            row =>
+                row.user_id !== currentUser.id &&
+                row.is_open &&
+                profileById.get(row.user_id) &&
+                profileById.get(row.user_id).clinic_site === holderClinic
+        );
+
     /* Coverage gate: a day is at risk when its unfilled
        12-hour slots outnumber the remaining pickers at this
        clinic who could still fill that day (not already on a
@@ -3743,7 +3859,7 @@ async function submitQuarter() {
     }
 
     const nextName =
-        nextPicker
+        nextPicker && !anotherPickerOpen
             ? getProfileName(nextPicker)
             : null;
 
@@ -3769,6 +3885,13 @@ async function submitQuarter() {
         confirmBody +=
             `<p>When you submit, your scheduling access will close ` +
             `and scheduling will move to <strong>${escapeHtml(nextName)}</strong>.</p>`;
+    } else if (
+        anotherPickerOpen
+    ) {
+
+        confirmBody +=
+            "<p>When you submit, your scheduling access will close. " +
+            "Another picker at your clinic is still picking, so no new picker opens.</p>";
     } else {
 
         confirmBody +=
@@ -4038,6 +4161,8 @@ async function previousWeek() {
             newDate
         );
 
+    syncQuarterSelectionToCurrentWeek();
+
     await loadWeek();
 }
 
@@ -4060,6 +4185,8 @@ async function nextWeek() {
             newDate
         );
 
+    syncQuarterSelectionToCurrentWeek();
+
     await loadWeek();
 }
 
@@ -4070,6 +4197,8 @@ async function goToCurrentWeek() {
         getSunday(
             new Date()
         );
+
+    syncQuarterSelectionToCurrentWeek();
 
     await loadWeek();
 }
