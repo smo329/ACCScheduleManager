@@ -127,7 +127,12 @@ function renderDashboardStrip(){
  else cards=[
   {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
   {icon:'▦',label:'My Schedule',value:'View',sub:'Your schedule',run:()=>window.openMySchedule?.()},
-  {icon:'◫',label:'Week status',value:status,sub:'Current week',run:jumpToWeek},
+  /* Employees get a My Critical Labs card like the My Holidays card; in
+     view-as mode the Week status card stays, so an admin acting as
+     someone never opens that person's coverage view. */
+  ...(window.viewAsActive
+   ? [{icon:'◫',label:'Week status',value:status,sub:'Current week',run:jumpToWeek}]
+   : [{icon:'🧪',label:'My Critical Labs',value:'View',sub:'Your coverage weeks',run:()=>window.openMyCriticalLabs?.()}]),
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Scheduling alerts',run:()=>window.openNotificationCenter?.()}
  ];
  if(window.viewAsActive&&window.viewAsProfile){
