@@ -56,9 +56,11 @@ function improveCards(){
       if(sub)sub.textContent='Tap to view your schedule';
     }
     if(cards[2]){
-      actionCard(cards[2],scrollToWorkflow,'Go to current week schedule status');
+      /* Third employee card is My Critical Labs (Week status only in
+         view-as, where this pass never runs). */
+      actionCard(cards[2],()=>window.openMyCriticalLabs?.(),'Open My Critical Labs');
       const sub=cards[2].querySelector('.acc-stat-sub');
-      if(sub)sub.textContent='Tap to view current week';
+      if(sub)sub.textContent='Tap to view your coverage weeks';
     }
     if(cards[3]){
       /* The holiday patch turns this card into My Holidays for Turfland
