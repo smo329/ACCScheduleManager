@@ -125,9 +125,9 @@ function renderDashboardStrip(){
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Shift alerts',run:()=>window.openNotificationCenter?.()}
  ];
  else cards=[
-  {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
-  {icon:'◫',label:'Week status',value:status,sub:'Current week',run:jumpToWeek},
   {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
+  {icon:'▦',label:'My Schedule',value:'View',sub:'Your schedule',run:()=>window.openMySchedule?.()},
+  {icon:'◫',label:'Week status',value:status,sub:'Current week',run:jumpToWeek},
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Scheduling alerts',run:()=>window.openNotificationCenter?.()}
  ];
  if(window.viewAsActive&&window.viewAsProfile){
