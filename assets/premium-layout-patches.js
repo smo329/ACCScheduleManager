@@ -47,15 +47,36 @@ function actions(){
   {section:'Admin',id:'navIssues',icon:'◇',label:'Coverage & Exceptions',show:isAdmin(),run:()=>window.openIssuesCenter?.(),badge:'issues'},
   {section:'Admin',id:'navPeople',icon:'◌',label:'Manage People',show:isAdmin(),run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {section:'Admin',id:'navHistory',icon:'≡',label:'History',show:isAdmin(),run:()=>window.openScheduleHistory?.()},
-  {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>window.openArchiveCenter?.()},
   {section:'Admin',id:'navCriticalLabs',icon:'🧪',label:'Critical Labs',show:isAdmin(),run:()=>window.openCriticalLabsManager?.()},
   {section:'Admin',id:'navHolidays',icon:'🗓',label:'Holidays',show:isAdmin(),run:()=>window.openHolidayModal?.()},
+  // Archive sits last in the Admin section (the bottom nav item for
+  // admins) and is a placeholder for now: it shows a coming-soon modal
+  // instead of opening the Archive Center, whose export code stays in
+  // place and can be re-enabled later by pointing run back at
+  // window.openArchiveCenter.
+  {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>openArchiveComingSoon()},
  ];
  const manager=[
   {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
   {section:'Management',id:'navManagerAdditional',icon:'＋',label:'Additional Shifts',show:isManager(),run:()=>window.openOpenShifts?.()},
  ];
  return [...common,...admin,...manager].filter(x=>x.show!==false);
+}
+function openArchiveComingSoon(){
+ let overlay=document.getElementById('archiveComingSoonModal');
+ if(!overlay){
+  overlay=document.createElement('div');
+  overlay.id='archiveComingSoonModal';
+  overlay.className='modal-overlay';
+  overlay.innerHTML='<div class="modal"><div class="modal-header"><div class="modal-title">Archive</div><button class="modal-close" type="button" aria-label="Close">×</button></div><div class="modal-body"><p style="color:#475569;font-size:14px;margin:0;">Archive will be added in a future update.</p></div><div class="modal-footer"><button class="modal-button cancel-button" type="button">Close</button></div></div>';
+  overlay.querySelector('.modal-close').onclick=closeArchiveComingSoon;
+  overlay.querySelector('.modal-footer button').onclick=closeArchiveComingSoon;
+  document.body.appendChild(overlay);
+ }
+ overlay.classList.add('show');
+}
+function closeArchiveComingSoon(){
+ document.getElementById('archiveComingSoonModal')?.classList.remove('show');
 }
 function suppressLegacyHeaderControls(){
  const holder=document.querySelector('.topbar-user');if(!holder)return;
