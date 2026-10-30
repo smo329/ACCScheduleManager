@@ -428,6 +428,25 @@ function closeAdmin() {
         .classList.remove(
             "show"
         );
+
+    // A quarter changed while the modal was open: the main grid was
+    // deliberately not rebuilt then (it would only have flashed behind
+    // the blurred backdrop). Refresh it once, now that the modal is
+    // gone — and only while still signed in.
+    if (
+        typeof adminQuarterChangedWhileOpen !== "undefined" &&
+        adminQuarterChangedWhileOpen
+    ) {
+        adminQuarterChangedWhileOpen = false;
+
+        if (
+            typeof currentUser !== "undefined" &&
+            currentUser &&
+            typeof loadWeek === "function"
+        ) {
+            loadWeek();
+        }
+    }
 }
 
 
