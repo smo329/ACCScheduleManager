@@ -1,30 +1,31 @@
 /*
- * ACC Schedule Manager - Employee email notification preferences
- * Lets employees opt in or out of Mailjet emails: scheduling opens, trade
- * updates, and the end-of-day additional-shift digest. Emails go to the
- * employee's verified notification email when one is set, otherwise to
- * the login email; @uky.edu addresses are never emailed (UKY mail
- * quarantines these at the admin level). The email address itself is set
- * through a verification-code flow, never saved unverified.
+ * ACC Schedule Manager - Email notification preferences
+ * Lets any signed-in user opt in or out of Mailjet emails: scheduling
+ * opens, trade updates, and the end-of-day additional-shift digest.
+ * Which toggles appear depends on the role: admins and managers get
+ * trade updates; employees get all three; external workers get only the
+ * digest. Emails go to the user's verified notification email when one
+ * is set, otherwise to the login email; @uky.edu addresses are never
+ * emailed (UKY mail quarantines these at the admin level). The email
+ * address itself is set through a verification-code flow, never saved
+ * unverified.
  * Preferences live in notification_preferences
  * (own-row RLS already allows select/insert/update); verification codes
  * live in notification_email_verifications and are only touched through
  * the send-user-notification Edge Function.
  *
  * The section renders in the Notifications tab of Account Settings, only
- * for employees viewing their own account (never in view-as mode, never
- * for admins/managers, who have their own sections).
+ * for users viewing their own account (never in view-as mode).
  */
 (function () {
     "use strict";
 
-    function isOwnEmployee() {
+    function isOwnAccount() {
         try {
             if (typeof window !== "undefined" && window.viewAsActive) return false;
             if (typeof currentUser === "undefined" || !currentUser) return false;
             if (typeof currentProfile === "undefined" || !currentProfile) return false;
-            if (currentProfile.id !== currentUser.id) return false;
-            return currentProfile.role === "employee";
+            return currentProfile.id === currentUser.id;
         } catch (e) {
             return false;
         }
@@ -49,7 +50,7 @@
     }
 
     function ensureEmployeeEmailUi() {
-        if (!isOwnEmployee()) return null;
+        if (!isOwnAccount()) return null;
         if (typeof supabaseClient === "undefined") return null;
 
         const panel = document.querySelector(
@@ -73,17 +74,17 @@
         section = document.createElement("div");
         section.id = "employeeEmailNotificationSettings";
         section.innerHTML =
-            '<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
+            '<label id="employeeEmailScheduleOpenRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
                 '<input id="employeeEmailScheduleOpen" type="checkbox" style="width:auto;margin-top:3px;">' +
                 '<span><strong>Email me when scheduling opens for me</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">Sent when your scheduling access opens for a quarter.</span></span>' +
             "</label>" +
-            '<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
+            '<label id="employeeEmailTradesRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
                 '<input id="employeeEmailTrades" type="checkbox" style="width:auto;margin-top:3px;">' +
                 '<span><strong>Email me about trades</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">Sent when you receive a trade request, and when a trade you proposed is accepted or declined. Covers regular, Critical Labs, and holiday trades.</span></span>' +
             "</label>" +
-            '<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
+            '<label id="employeeEmailDigestRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
                 '<input id="employeeEmailDigest" type="checkbox" style="width:auto;margin-top:3px;">' +
                 '<span><strong>Email me a digest of new additional shifts</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when new additional shifts were added.</span></span>' +
@@ -104,6 +105,19 @@
             '<div id="employeeEmailHelp" class="account-settings-help"></div>' +
             '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button">Save Notification Settings</button>';
         panel.appendChild(section);
+
+        // Which toggles appear follows the in-app notifications each role
+        // actually receives: schedule opens go to employees only, trades
+        // to admins/managers/employees, and the additional-shift digest
+        // to employees/externals. Hidden toggles stay in the DOM (unchecked)
+        // so saving still writes all three columns.
+        const accountRole = (typeof currentProfile !== "undefined" && currentProfile) ? currentProfile.role : null;
+        const scheduleOpenRow = section.querySelector("#employeeEmailScheduleOpenRow");
+        const tradesRow = section.querySelector("#employeeEmailTradesRow");
+        const digestRow = section.querySelector("#employeeEmailDigestRow");
+        if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "employee" ? "flex" : "none";
+        if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "employee") ? "flex" : "none";
+        if (digestRow) digestRow.style.display = (accountRole === "employee" || accountRole === "external") ? "flex" : "none";
 
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
         section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
@@ -177,7 +191,7 @@
 
     async function sendVerificationCode() {
         if (typeof clearAccountMessages === "function") clearAccountMessages();
-        if (!isOwnEmployee() || typeof currentUser === "undefined" || !currentUser) return;
+        if (!isOwnAccount() || typeof currentUser === "undefined" || !currentUser) return;
         const addressInput = document.getElementById("employeeEmailAddress");
         const status = document.getElementById("employeeEmailVerifyStatus");
         const button = document.getElementById("employeeEmailSendCodeButton");
@@ -211,7 +225,7 @@
 
     async function confirmVerificationCode() {
         if (typeof clearAccountMessages === "function") clearAccountMessages();
-        if (!isOwnEmployee() || typeof currentUser === "undefined" || !currentUser) return;
+        if (!isOwnAccount() || typeof currentUser === "undefined" || !currentUser) return;
         const addressInput = document.getElementById("employeeEmailAddress");
         const codeInput = document.getElementById("employeeEmailCode");
         const status = document.getElementById("employeeEmailVerifyStatus");
@@ -247,7 +261,7 @@
 
     async function saveEmployeeEmailPrefs() {
         if (typeof clearAccountMessages === "function") clearAccountMessages();
-        if (!isOwnEmployee() || typeof currentUser === "undefined" || !currentUser) return;
+        if (!isOwnAccount() || typeof currentUser === "undefined" || !currentUser) return;
 
         const scheduleOpen = document.getElementById("employeeEmailScheduleOpen");
         const trades = document.getElementById("employeeEmailTrades");
