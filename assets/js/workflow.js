@@ -834,6 +834,13 @@ function formatPeriodName(
 }
 
 
+// Set when the admin changes the scheduling quarter while the Quarter
+// Dashboard modal is open. closeAdmin() consumes it with a single
+// loadWeek() so the main grid refreshes once the modal is gone, instead
+// of flashing behind the modal's blurred backdrop.
+let adminQuarterChangedWhileOpen = false;
+
+
 async function changeAdminQuarter() {
 
     const select =
@@ -864,7 +871,24 @@ async function changeAdminQuarter() {
         );
     }
 
-    await loadWeek();
+    const adminModal =
+        document.getElementById(
+            "adminModal"
+        );
+
+    if (
+        adminModal &&
+        adminModal.classList.contains(
+            "show"
+        )
+    ) {
+        // The modal covers the main schedule with a blurred backdrop:
+        // rebuilding the grid now would only flash behind it. Defer the
+        // refresh until the modal closes.
+        adminQuarterChangedWhileOpen = true;
+    } else {
+        await loadWeek();
+    }
 
     renderAdminQuarterControls();
     renderPeopleList();
