@@ -20,6 +20,20 @@
 (function () {
     "use strict";
 
+    // The address most recently verified in this session. The Verify
+    // button stays disabled while the email field still holds it, so a
+    // stray second click cannot re-submit an already-consumed code; it
+    // re-enables as soon as the field changes to a different address.
+    let lastVerifiedEmail = "";
+
+    function syncVerifyButtonState() {
+        const addressInput = document.getElementById("employeeEmailAddress");
+        const button = document.getElementById("employeeEmailVerifyButton");
+        if (!addressInput || !button) return;
+        const current = addressInput.value.trim().toLowerCase();
+        button.disabled = Boolean(current && lastVerifiedEmail && current === lastVerifiedEmail);
+    }
+
     function isOwnAccount() {
         try {
             if (typeof window !== "undefined" && window.viewAsActive) return false;
@@ -89,6 +103,7 @@
                 '<span><strong>Email me a digest of new additional shifts</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when new additional shifts were added.</span></span>' +
             "</label>" +
+            '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button" style="margin-bottom:14px;">Save Notification Settings</button>' +
             '<div id="employeeEmailUkyNotice" class="account-settings-help" style="display:none;"></div>' +
             '<div style="margin-bottom:14px;">' +
                 '<label style="display:block;margin-bottom:6px;"><strong>Notification email</strong>' +
@@ -97,13 +112,13 @@
                 '<button id="employeeEmailSendCodeButton" class="modal-button" type="button">Send verification code</button>' +
                 '<div style="display:flex;gap:8px;margin-top:8px;">' +
                     '<input id="employeeEmailCode" type="text" inputmode="numeric" maxlength="6" style="flex:1;" placeholder="6-digit code">' +
-                    '<button id="employeeEmailVerifyButton" class="modal-button save-button" type="button">Verify</button>' +
+                    '<button id="employeeEmailVerifyButton" class="modal-button save-button" type="button">Verify &amp; Save</button>' +
                 '</div>' +
+                '<div class="account-settings-help">Verifying saves this address as your notification email.</div>' +
                 '<div id="employeeEmailVerifyStatus" class="account-settings-help"></div>' +
                 '<div class="account-settings-help">If the verification email lands in spam, mark ACC Schedule Manager as not spam so future notifications reach your inbox.</div>' +
             '</div>' +
-            '<div id="employeeEmailHelp" class="account-settings-help"></div>' +
-            '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button">Save Notification Settings</button>';
+            '<div id="employeeEmailHelp" class="account-settings-help"></div>';
         panel.appendChild(section);
 
         // Which toggles appear follows the in-app notifications each role
@@ -122,6 +137,8 @@
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
         section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
         section.querySelector("#employeeEmailVerifyButton").onclick = confirmVerificationCode;
+        const emailAddressInput = section.querySelector("#employeeEmailAddress");
+        if (emailAddressInput) emailAddressInput.oninput = syncVerifyButtonState;
         loadEmployeeEmailPrefs().catch(error => {
             console.warn("Unable to load employee email preferences:", error);
         });
@@ -152,6 +169,8 @@
         const verifiedEmail = data && data.notification_email_verified ? (data.notification_email || "") : "";
         const addressInput = section.querySelector("#employeeEmailAddress");
         if (addressInput) addressInput.value = (data && data.notification_email) || "";
+        lastVerifiedEmail = verifiedEmail ? verifiedEmail.trim().toLowerCase() : "";
+        syncVerifyButtonState();
         const verifyStatus = section.querySelector("#employeeEmailVerifyStatus");
         if (verifyStatus) {
             verifyStatus.textContent = verifiedEmail
@@ -245,8 +264,10 @@
             });
             if (error || (data && data.error)) throw new Error(employeeEmailErrorText(error, data));
             if (!data || data.verified !== true) throw new Error("Verification did not complete. Request a new code.");
+            lastVerifiedEmail = email;
+            if (codeInput) codeInput.value = "";
             if (status) status.textContent = "Verified: notifications will be sent to " + email;
-            showOk("Notification email verified.");
+            showOk("Notification email verified and saved.");
             loadEmployeeEmailPrefs().catch(error => {
                 console.warn("Unable to reload employee email preferences:", error);
             });
@@ -254,8 +275,8 @@
             console.error(error);
             showErr("Unable to verify: " + (error.message || "Unknown error"));
         } finally {
-            button.disabled = false;
-            button.textContent = "Verify";
+            button.textContent = "Verify & Save";
+            syncVerifyButtonState();
         }
     }
 
