@@ -1,12 +1,13 @@
 /*
  * ACC Schedule Manager - Email notification availability patch
- * Email delivery remains implemented, but user-facing email notification
- * enrollment is temporarily unavailable until a production sender is ready.
+ * Employee email enrollment is now available via the Mailjet sender (see
+ * employee-email-patches.js). Manager/admin digest sections stay hidden:
+ * their Resend-backed functions still deliver only to the account owner.
  */
 (function () {
     "use strict";
 
-    const VERSION = "2026.08.14.4";
+    const VERSION = "2026.10.30.1";
 
     console.info(
         `[ACC Schedule Manager] email availability patch loaded: ${VERSION}`
@@ -41,27 +42,14 @@
             }
         });
 
-        let unavailable = document.getElementById(
+        // Employee email enrollment is now available via the Mailjet sender
+        // (see employee-email-patches.js), so the "unavailable" banner is
+        // retired. Manager/admin sections stay hidden: their Resend-backed
+        // functions still deliver only to the account owner.
+        const staleBanner = document.getElementById(
             "emailNotificationsUnavailable"
         );
-
-        if (!unavailable) {
-            unavailable = document.createElement("div");
-            unavailable.id = "emailNotificationsUnavailable";
-            unavailable.className = "email-notifications-unavailable";
-            unavailable.innerHTML = `
-                <div class="email-unavailable-icon" aria-hidden="true">✉</div>
-                <div>
-                    <strong>Email Notifications</strong>
-                    <p>
-                        Email notifications are currently unavailable.
-                        Please check back later.
-                    </p>
-                </div>
-            `;
-
-            panel.appendChild(unavailable);
-        }
+        if (staleBanner) staleBanner.remove();
     }
 
     function installStyles() {
