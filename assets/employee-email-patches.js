@@ -2,8 +2,14 @@
  * ACC Schedule Manager - Employee email notification preferences
  * Lets employees opt in or out of Mailjet emails: scheduling opens, trade
  * updates, and the end-of-day additional-shift digest. Emails go to the
- * employee's login email. Preferences live in notification_preferences
- * (own-row RLS already allows select/insert/update).
+ * employee's verified notification email when one is set, otherwise to
+ * the login email; @uky.edu addresses are never emailed (UKY mail
+ * quarantines these at the admin level). The email address itself is set
+ * through a verification-code flow, never saved unverified.
+ * Preferences live in notification_preferences
+ * (own-row RLS already allows select/insert/update); verification codes
+ * live in notification_email_verifications and are only touched through
+ * the send-user-notification Edge Function.
  *
  * The section renders in the Notifications tab of Account Settings, only
  * for employees viewing their own account (never in view-as mode, never
@@ -82,11 +88,26 @@
                 '<span><strong>Email me a digest of new additional shifts</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when new additional shifts were added.</span></span>' +
             "</label>" +
+            '<div id="employeeEmailUkyNotice" class="account-settings-help" style="display:none;"></div>' +
+            '<div style="margin-bottom:14px;">' +
+                '<label style="display:block;margin-bottom:6px;"><strong>Notification email</strong>' +
+                '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">Optional. Use a personal email address. @uky.edu addresses cannot receive these notifications, because UKY mail quarantines them.</span></label>' +
+                '<input id="employeeEmailAddress" type="email" style="width:100%;margin-bottom:8px;" placeholder="you@example.com">' +
+                '<button id="employeeEmailSendCodeButton" class="modal-button" type="button">Send verification code</button>' +
+                '<div style="display:flex;gap:8px;margin-top:8px;">' +
+                    '<input id="employeeEmailCode" type="text" inputmode="numeric" maxlength="6" style="flex:1;" placeholder="6-digit code">' +
+                    '<button id="employeeEmailVerifyButton" class="modal-button save-button" type="button">Verify</button>' +
+                '</div>' +
+                '<div id="employeeEmailVerifyStatus" class="account-settings-help"></div>' +
+                '<div class="account-settings-help">If the verification email lands in spam, mark ACC Schedule Manager as not spam so future notifications reach your inbox.</div>' +
+            '</div>' +
             '<div id="employeeEmailHelp" class="account-settings-help"></div>' +
             '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button">Save Notification Settings</button>';
         panel.appendChild(section);
 
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
+        section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
+        section.querySelector("#employeeEmailVerifyButton").onclick = confirmVerificationCode;
         loadEmployeeEmailPrefs().catch(error => {
             console.warn("Unable to load employee email preferences:", error);
         });
@@ -98,16 +119,9 @@
         if (!section || typeof currentUser === "undefined" || !currentUser) return;
 
         const loginEmail = currentUser.email || "";
-        const help = section.querySelector("#employeeEmailHelp");
-        if (help) {
-            help.textContent = loginEmail
-                ? "Emails will be sent to your login email: " + loginEmail
-                : "Emails will be sent to your login email.";
-        }
-
         const { data, error } = await supabaseClient
             .from("notification_preferences")
-            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled")
+            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled, notification_email, notification_email_verified")
             .eq("user_id", currentUser.id)
             .maybeSingle();
         if (error) {
@@ -120,6 +134,115 @@
             Boolean(data && data.trade_email_enabled);
         section.querySelector("#employeeEmailDigest").checked =
             Boolean(data && data.open_shift_digest_enabled);
+
+        const verifiedEmail = data && data.notification_email_verified ? (data.notification_email || "") : "";
+        const addressInput = section.querySelector("#employeeEmailAddress");
+        if (addressInput) addressInput.value = (data && data.notification_email) || "";
+        const verifyStatus = section.querySelector("#employeeEmailVerifyStatus");
+        if (verifyStatus) {
+            verifyStatus.textContent = verifiedEmail
+                ? "Verified: notifications will be sent to " + verifiedEmail
+                : "";
+        }
+        const ukyNotice = section.querySelector("#employeeEmailUkyNotice");
+        if (ukyNotice) {
+            const loginIsUky = loginEmail.trim().toLowerCase().endsWith("@uky.edu");
+            if (loginIsUky && !verifiedEmail) {
+                ukyNotice.style.display = "block";
+                ukyNotice.textContent = "Your login email is a @uky.edu address, which cannot receive these notifications (UKY quarantines them). Add a personal email below and verify it.";
+            } else {
+                ukyNotice.style.display = "none";
+                ukyNotice.textContent = "";
+            }
+        }
+        const help = section.querySelector("#employeeEmailHelp");
+        if (help) {
+            help.textContent = verifiedEmail
+                ? "Emails will be sent to your verified notification email: " + verifiedEmail
+                : (loginEmail
+                    ? "Emails will be sent to your login email: " + loginEmail
+                    : "Emails will be sent to your login email.");
+        }
+    }
+
+    function employeeEmailErrorText(error, data) {
+        if (data && data.error) return data.error;
+        if (error && error.message) return error.message;
+        return "Unknown error";
+    }
+
+    function validNotificationEmail(email) {
+        return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    }
+
+    async function sendVerificationCode() {
+        if (typeof clearAccountMessages === "function") clearAccountMessages();
+        if (!isOwnEmployee() || typeof currentUser === "undefined" || !currentUser) return;
+        const addressInput = document.getElementById("employeeEmailAddress");
+        const status = document.getElementById("employeeEmailVerifyStatus");
+        const button = document.getElementById("employeeEmailSendCodeButton");
+        if (!addressInput || !button) return;
+        const email = addressInput.value.trim().toLowerCase();
+        if (!validNotificationEmail(email)) {
+            showErr("Enter a valid email address.");
+            return;
+        }
+        if (email.endsWith("@uky.edu")) {
+            showErr("Notifications cannot be sent to @uky.edu addresses: UKY mail quarantines them. Use a personal email address.");
+            return;
+        }
+        button.disabled = true;
+        button.textContent = "Sending...";
+        try {
+            const { data, error } = await supabaseClient.functions.invoke("send-user-notification", {
+                body: { mode: "request_verification", email: email }
+            });
+            if (error || (data && data.error)) throw new Error(employeeEmailErrorText(error, data));
+            if (status) status.textContent = "Verification code sent to " + email + ". It expires in 30 minutes.";
+            showOk("Verification code sent. Check spam if you do not see it, and mark ACC Schedule Manager as not spam.");
+        } catch (error) {
+            console.error(error);
+            showErr("Unable to send verification code: " + (error.message || "Unknown error"));
+        } finally {
+            button.disabled = false;
+            button.textContent = "Send verification code";
+        }
+    }
+
+    async function confirmVerificationCode() {
+        if (typeof clearAccountMessages === "function") clearAccountMessages();
+        if (!isOwnEmployee() || typeof currentUser === "undefined" || !currentUser) return;
+        const addressInput = document.getElementById("employeeEmailAddress");
+        const codeInput = document.getElementById("employeeEmailCode");
+        const status = document.getElementById("employeeEmailVerifyStatus");
+        const button = document.getElementById("employeeEmailVerifyButton");
+        if (!addressInput || !codeInput || !button) return;
+        const email = addressInput.value.trim().toLowerCase();
+        const code = codeInput.value.trim();
+        if (!validNotificationEmail(email) || !/^\d{6}$/.test(code)) {
+            showErr("Enter the email address and the 6-digit code.");
+            return;
+        }
+        button.disabled = true;
+        button.textContent = "Verifying...";
+        try {
+            const { data, error } = await supabaseClient.functions.invoke("send-user-notification", {
+                body: { mode: "confirm_verification", email: email, code: code }
+            });
+            if (error || (data && data.error)) throw new Error(employeeEmailErrorText(error, data));
+            if (!data || data.verified !== true) throw new Error("Verification did not complete. Request a new code.");
+            if (status) status.textContent = "Verified: notifications will be sent to " + email;
+            showOk("Notification email verified.");
+            loadEmployeeEmailPrefs().catch(error => {
+                console.warn("Unable to reload employee email preferences:", error);
+            });
+        } catch (error) {
+            console.error(error);
+            showErr("Unable to verify: " + (error.message || "Unknown error"));
+        } finally {
+            button.disabled = false;
+            button.textContent = "Verify";
+        }
     }
 
     async function saveEmployeeEmailPrefs() {
