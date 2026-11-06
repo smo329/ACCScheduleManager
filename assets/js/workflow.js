@@ -4187,6 +4187,8 @@ async function previousWeek() {
 
     syncQuarterSelectionToCurrentWeek();
 
+    saveViewedWeek();
+
     await loadWeek();
 }
 
@@ -4211,6 +4213,8 @@ async function nextWeek() {
 
     syncQuarterSelectionToCurrentWeek();
 
+    saveViewedWeek();
+
     await loadWeek();
 }
 
@@ -4223,6 +4227,8 @@ async function goToCurrentWeek() {
         );
 
     syncQuarterSelectionToCurrentWeek();
+
+    saveViewedWeek();
 
     await loadWeek();
 }
