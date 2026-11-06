@@ -3,8 +3,9 @@
  * Lets any signed-in user opt in or out of Mailjet emails: scheduling
  * opens, trade updates, and the end-of-day additional-shift digest.
  * Which toggles appear depends on the role: admins and managers get
- * trade updates; employees get all three; external workers get only the
- * digest. Emails go to the user's verified notification email when one
+ * trade updates plus both digests (new shifts, and sign-ups/removals);
+ * employees get schedule opens, trades, and the new-shifts digest;
+ * external workers get only the new-shifts digest. Emails go to the user's verified notification email when one
  * is set, otherwise to the login email; @uky.edu addresses are never
  * emailed (UKY mail quarantines these at the admin level). The email
  * address itself is set through a verification-code flow, never saved
@@ -103,6 +104,11 @@
                 '<span><strong>Email me a digest of new additional shifts</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when new additional shifts were added.</span></span>' +
             "</label>" +
+            '<label id="employeeEmailClaimDigestRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
+                '<input id="employeeEmailClaimDigest" type="checkbox" style="width:auto;margin-top:3px;">' +
+                '<span><strong>Email me a digest of additional shift sign-ups</strong>' +
+                '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when someone signed up for or was removed from an additional shift.</span></span>' +
+            "</label>" +
             '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button" style="margin-bottom:14px;">Save Notification Settings</button>' +
             '<div id="employeeEmailUkyNotice" class="account-settings-help" style="display:none;"></div>' +
             '<div style="margin-bottom:14px;">' +
@@ -122,17 +128,20 @@
         panel.appendChild(section);
 
         // Which toggles appear follows the in-app notifications each role
-        // actually receives: schedule opens go to employees only, trades
-        // to admins/managers/employees, and the additional-shift digest
-        // to employees/externals. Hidden toggles stay in the DOM (unchecked)
-        // so saving still writes all three columns.
+        // actually receives, plus the leadership digests: schedule opens
+        // go to employees only, trades to admins/managers/employees, the
+        // new-shifts digest to every role, and the sign-up digest to
+        // admins/managers only. Hidden toggles stay in the DOM (unchecked)
+        // so saving still writes all columns.
         const accountRole = (typeof currentProfile !== "undefined" && currentProfile) ? currentProfile.role : null;
         const scheduleOpenRow = section.querySelector("#employeeEmailScheduleOpenRow");
         const tradesRow = section.querySelector("#employeeEmailTradesRow");
         const digestRow = section.querySelector("#employeeEmailDigestRow");
+        const claimDigestRow = section.querySelector("#employeeEmailClaimDigestRow");
         if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "employee" ? "flex" : "none";
         if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "employee") ? "flex" : "none";
-        if (digestRow) digestRow.style.display = (accountRole === "employee" || accountRole === "external") ? "flex" : "none";
+        if (digestRow) digestRow.style.display = "flex";
+        if (claimDigestRow) claimDigestRow.style.display = (accountRole === "admin" || accountRole === "manager") ? "flex" : "none";
 
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
         section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
@@ -152,7 +161,7 @@
         const loginEmail = currentUser.email || "";
         const { data, error } = await supabaseClient
             .from("notification_preferences")
-            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled, notification_email, notification_email_verified")
+            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled, open_shift_claim_digest_enabled, notification_email, notification_email_verified")
             .eq("user_id", currentUser.id)
             .maybeSingle();
         if (error) {
@@ -165,6 +174,8 @@
             Boolean(data && data.trade_email_enabled);
         section.querySelector("#employeeEmailDigest").checked =
             Boolean(data && data.open_shift_digest_enabled);
+        section.querySelector("#employeeEmailClaimDigest").checked =
+            Boolean(data && data.open_shift_claim_digest_enabled);
 
         const verifiedEmail = data && data.notification_email_verified ? (data.notification_email || "") : "";
         const addressInput = section.querySelector("#employeeEmailAddress");
@@ -287,8 +298,9 @@
         const scheduleOpen = document.getElementById("employeeEmailScheduleOpen");
         const trades = document.getElementById("employeeEmailTrades");
         const digest = document.getElementById("employeeEmailDigest");
+        const claimDigest = document.getElementById("employeeEmailClaimDigest");
         const button = document.getElementById("saveEmployeeEmailButton");
-        if (!scheduleOpen || !trades || !digest || !button) return;
+        if (!scheduleOpen || !trades || !digest || !claimDigest || !button) return;
 
         button.disabled = true;
         button.textContent = "Saving...";
@@ -300,6 +312,7 @@
                     schedule_open_email_enabled: scheduleOpen.checked,
                     trade_email_enabled: trades.checked,
                     open_shift_digest_enabled: digest.checked,
+                    open_shift_claim_digest_enabled: claimDigest.checked,
                     updated_at: new Date().toISOString()
                 }, { onConflict: "user_id" });
             if (error) throw new Error(error.message);
