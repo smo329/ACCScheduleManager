@@ -162,6 +162,38 @@
     return group;
   }
 
+  function ensureSaveEmailButton() {
+    if (!currentUser) return null;
+
+    let group = document.getElementById("saveEmailButtonGroup");
+    if (group) return group;
+
+    const confirmGroup = document.getElementById("accountConfirmEmailGroup");
+    const emailInput = document.getElementById("accountEmail");
+    const emailGroup = emailInput ? emailInput.closest(".form-group") : null;
+    const anchorGroup = confirmGroup || emailGroup;
+    if (!anchorGroup) return null;
+
+    group = document.createElement("div");
+    group.id = "saveEmailButtonGroup";
+    group.className = "form-group";
+    group.innerHTML = `
+      <button
+        id="saveEmailButton"
+        class="modal-button save-button"
+        type="button"
+        style="margin-top:8px;"
+      >
+        Save Email
+      </button>
+    `;
+
+    anchorGroup.insertAdjacentElement("afterend", group);
+    group.querySelector("#saveEmailButton").onclick = saveEmail;
+
+    return group;
+  }
+
   async function refreshUsernameField() {
     const group = ensureUsernameField();
     if (!group) return;
@@ -255,6 +287,65 @@
     }
   }
 
+  async function saveEmail() {
+    if (!currentUser) return;
+
+    if (typeof clearAccountMessages === "function") clearAccountMessages();
+
+    const button = document.getElementById("saveEmailButton");
+    if (!button) return;
+
+    const emailField = document.getElementById("accountEmail");
+    const confirmField = document.getElementById("accountConfirmEmail");
+    const typedEmail = emailField ? emailField.value.trim() : "";
+    const currentEmail = String(currentUser.email || "");
+
+    if (!typedEmail) {
+      if (typeof showAccountError === "function") {
+        showAccountError("Enter an email address.");
+      }
+      return;
+    }
+
+    if (typedEmail.toLowerCase() === currentEmail.toLowerCase()) {
+      if (typeof showAccountMessage === "function") {
+        showAccountMessage("That email is already your sign-in email.");
+      }
+      return;
+    }
+
+    const confirmEmail = confirmField ? confirmField.value.trim() : "";
+    if (typedEmail.toLowerCase() !== confirmEmail.toLowerCase()) {
+      if (typeof showAccountError === "function") {
+        showAccountError("Email addresses do not match. Please re-enter your new email address in both fields.");
+      }
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Saving...";
+
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ email: typedEmail });
+      if (error) throw error;
+
+      const { data: userData } = await supabaseClient.auth.getUser();
+      if (userData && userData.user) currentUser = userData.user;
+
+      if (typeof showAccountMessage === "function") {
+        showAccountMessage("Email change requested. Supabase may require confirmation of the email change. Check your current and new email inboxes for confirmation messages.");
+      }
+    } catch (error) {
+      console.error(error);
+      if (typeof showAccountError === "function") {
+        showAccountError(`The email could not be changed: ${error?.message || "Unknown error."}`);
+      }
+    } finally {
+      button.disabled = false;
+      button.textContent = "Save Email";
+    }
+  }
+
   if (typeof openAccountManager === "function") {
     const originalOpenAccountManager = openAccountManager;
 
@@ -263,6 +354,7 @@
 
       setTimeout(() => {
         ensureUsernameField();
+        ensureSaveEmailButton();
         refreshUsernameField().catch(error =>
           console.warn("Username settings load failed:", error)
         );
