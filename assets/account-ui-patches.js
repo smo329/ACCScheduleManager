@@ -229,6 +229,58 @@
     }
 
 
+    function getConfirmEmailGroup() {
+        let group =
+            document.getElementById(
+                "accountConfirmEmailGroup"
+            );
+
+        if (group) {
+            const input =
+                group.querySelector(
+                    "#accountConfirmEmail"
+                );
+
+            if (input) {
+                input.value = "";
+            }
+
+            return group;
+        }
+
+        group =
+            document.createElement(
+                "div"
+            );
+
+        group.id =
+            "accountConfirmEmailGroup";
+
+        group.className =
+            "form-group";
+
+        group.innerHTML =
+            `
+            <label for="accountConfirmEmail">
+                Confirm Email
+            </label>
+
+            <input
+                id="accountConfirmEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="Re-enter your email address"
+            >
+
+            <div class="account-settings-help">
+                Required when changing your email address.
+            </div>
+            `;
+
+        return group;
+    }
+
+
     function showAccountSettingsTab(
         tabName
     ) {
@@ -654,6 +706,7 @@
             getFormGroupFor(
                 "accountEmail"
             ),
+            getConfirmEmailGroup(),
             getFormGroupFor(
                 "accountNewPassword"
             ),
@@ -769,10 +822,17 @@
             }
 
             #accountModal .modal-body {
+                display:flex;
+                flex-direction:column;
                 flex:1 1 auto;
                 min-height:0;
                 overflow:hidden;
                 padding:0;
+            }
+
+            #accountModal .modal-body #accountMessage,
+            #accountModal .modal-body #accountError {
+                flex:0 0 auto;
             }
 
             #accountModal .modal-footer {
@@ -785,7 +845,7 @@
             .account-settings-shell {
                 display:grid;
                 grid-template-columns:220px minmax(0,1fr);
-                height:100%;
+                flex:1 1 auto;
                 min-height:0;
             }
 
