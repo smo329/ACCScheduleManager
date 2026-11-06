@@ -9,7 +9,7 @@
   function fmtDate(key){return new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}).format(localDate(key))}
   function nameFor(id){try{const p=(profiles||[]).find(x=>x.id===id);return p?getProfileName(p):''}catch(_){return''}}
   function periodById(id){try{return (allSchedulingPeriods||[]).find(p=>p.id===id)||null}catch(_){return null}}
-  function currentPeriod(){try{return adminSchedulingPeriod||activeSchedulingPeriod||(allSchedulingPeriods||[]).find(p=>p.id===viewSchedulingPeriodId)||null}catch(_){return null}}
+  function currentPeriod(){try{return (allSchedulingPeriods||[]).find(p=>p.id===viewSchedulingPeriodId)||adminSchedulingPeriod||activeSchedulingPeriod||null}catch(_){return null}}
 
   function ensureStyles(){
     if(document.getElementById('adminDrilldownStyles'))return;
@@ -49,6 +49,7 @@
     if(target){
       try{currentWeekStart=getSunday(getDateFromKey(target))}catch(_){try{currentWeekStart=getSunday(localDate(target))}catch(__){}}
     }
+    try{if(typeof saveViewedWeek==='function')saveViewedWeek()}catch(_){}
     try{if(typeof loadWeek==='function')await loadWeek();else if(typeof renderSchedule==='function')renderSchedule()}catch(e){console.warn('Drill-down week load failed',e)}
     setTimeout(()=>highlightSchedule(userId,clinic,dateKey),120);
   }
