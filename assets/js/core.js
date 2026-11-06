@@ -44,6 +44,7 @@ let quarterWeekendScheduleRows = [];
 
 let viewSchedulingPeriodId = null;
 let viewMonthKey = null;
+let viewRestored = false;
 let monthlyWeekendTargets = {};
 
 let currentWeekStart =
@@ -282,6 +283,7 @@ async function logout() {
 
     viewSchedulingPeriodId = null;
     viewMonthKey = null;
+    viewRestored = false;
     monthlyWeekendTargets = {};
 
     document
@@ -983,6 +985,12 @@ async function loadWeek() {
     allSchedulingPeriods =
         periodResult.data || [];
 
+    if (
+        restoreViewedWeek()
+    ) {
+        return loadWeek();
+    }
+
     /*
      * Employee editing uses the scheduling period that
      * overlaps the currently displayed Sunday-Saturday week.
@@ -1512,6 +1520,76 @@ function syncQuarterSelectionToCurrentWeek() {
     }
 }
 
+function viewStorageKey() {
+    try {
+        const user =
+            typeof currentUser !== "undefined" ? currentUser : null;
+        return user && user.id
+            ? "acc_schedule_view:" + user.id
+            : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function saveViewedWeek() {
+    try {
+        const key = viewStorageKey();
+        if (!key) return;
+        const weekKey = getDateKey(currentWeekStart);
+        if (!weekKey) return;
+        localStorage.setItem(
+            key,
+            JSON.stringify({ weekStart: weekKey })
+        );
+    } catch (_) {}
+}
+
+function restoreViewedWeek() {
+    if (viewRestored) return false;
+
+    const key = viewStorageKey();
+    if (!key) return false;
+
+    viewRestored = true;
+
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return false;
+
+        const saved = JSON.parse(raw);
+        const weekStart = saved && saved.weekStart
+            ? new Date(saved.weekStart + "T00:00:00")
+            : null;
+        if (!weekStart || isNaN(weekStart.getTime())) return false;
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        const weekStartKey = getDateKey(weekStart);
+        const weekEndKey = getDateKey(weekEnd);
+
+        const overlaps = (allSchedulingPeriods || []).some(
+            period =>
+                period.active &&
+                weekStartKey <= period.period_end &&
+                weekEndKey >= period.period_start
+        );
+        if (!overlaps) return false;
+
+        const restoredWeekStart = getSunday(weekStart);
+        if (getDateKey(restoredWeekStart) === getDateKey(currentWeekStart)) {
+            return false;
+        }
+
+        currentWeekStart = restoredWeekStart;
+        syncQuarterSelectionToCurrentWeek();
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
 function renderQuarterNavigator() {
 
     const quarterSelect =
@@ -1704,6 +1782,8 @@ function renderQuarterNavigator() {
 
                     syncQuarterSelectionToCurrentWeek();
 
+                    saveViewedWeek();
+
                     await loadWeek();
                 };
 
@@ -1754,6 +1834,8 @@ async function changeViewQuarter() {
                 firstWeek
             );
 
+        saveViewedWeek();
+
         await loadWeek();
     } else {
         renderQuarterNavigator();
@@ -1787,6 +1869,8 @@ async function changeViewMonth() {
             getSunday(
                 firstWeek
             );
+
+        saveViewedWeek();
 
         await loadWeek();
     } else {
