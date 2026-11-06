@@ -3622,6 +3622,45 @@ async function submitQuarter() {
                 profileById.get(row.user_id).clinic_site === holderClinic
         );
 
+    /* Pickers already open can still fill a day they have
+       not taken, so they count toward the remaining pickers
+       alongside the waiting ones. The submitter never counts:
+       submitting closes their access. */
+    const openOthers =
+        (profiles || [])
+            .filter(
+                profile => {
+
+                    if (
+                        !profile.active ||
+                        profile.role !==
+                            "employee" ||
+                        profile.clinic_site !==
+                            holderClinic ||
+                        profile.id ===
+                            currentUser.id
+                    ) {
+
+                        return false;
+                    }
+
+                    const access =
+                        accessById.get(
+                            profile.id
+                        );
+
+                    return Boolean(
+                        access &&
+                        access.is_open
+                    );
+                }
+            );
+
+    const remainingPickers =
+        waiting.concat(
+            openOthers
+        );
+
     /* Coverage gate: a day is at risk when its unfilled
        12-hour slots outnumber the remaining pickers at this
        clinic who could still fill that day (not already on a
@@ -3631,7 +3670,7 @@ async function submitQuarter() {
     let coverageRisks = [];
 
     if (
-        waiting.length > 0
+        remainingPickers.length > 0
     ) {
 
         const capacityByDate = new Map(
@@ -3744,7 +3783,7 @@ async function submitQuarter() {
             ) {
 
                 const available =
-                    waiting.filter(
+                    remainingPickers.filter(
                         profile => {
 
                             const row =
