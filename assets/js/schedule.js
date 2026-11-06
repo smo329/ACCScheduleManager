@@ -1031,16 +1031,24 @@ async function confirmCapacityFor12Shift(
         "admin"
     ) {
 
-        alert(
+        showError(
             `${workSite} has no 12-hour shifts available on ${dateKey}. Please choose another clinic/day or contact an administrator.`
         );
 
         return false;
     }
 
-    return confirm(
+    const override = confirm(
         `${workSite} is already at capacity on ${dateKey}. Do you want to override the limit and schedule this 12-hour shift anyway?`
     );
+
+    if (!override) {
+        showError(
+            `${workSite} is already at capacity on ${dateKey}.`
+        );
+    }
+
+    return override;
 }
 
 
