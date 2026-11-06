@@ -129,6 +129,7 @@
 
     const emailGroup = emailInput.closest(".form-group");
     if (!emailGroup) return null;
+    const anchorGroup = document.getElementById("accountConfirmEmailGroup") || emailGroup;
 
     group = document.createElement("div");
     group.id = "accountUsernameGroup";
@@ -155,7 +156,7 @@
       </button>
     `;
 
-    emailGroup.insertAdjacentElement("afterend", group);
+    anchorGroup.insertAdjacentElement("afterend", group);
     group.querySelector("#saveUsernameButton").onclick = saveUsername;
 
     return group;
@@ -188,6 +189,20 @@
         );
       }
       return;
+    }
+
+    const emailField = document.getElementById("accountEmail");
+    const confirmField = document.getElementById("accountConfirmEmail");
+    const typedEmail = emailField ? emailField.value.trim() : "";
+    const emailChanging = typedEmail && typedEmail.toLowerCase() !== String(currentUser.email || "").toLowerCase();
+    if (emailChanging) {
+      const confirmEmail = confirmField ? confirmField.value.trim() : "";
+      if (typedEmail.toLowerCase() !== confirmEmail.toLowerCase()) {
+        if (typeof showAccountError === "function") {
+          showAccountError("Email addresses do not match. Please re-enter your new email address in both fields.");
+        }
+        return;
+      }
     }
 
     button.disabled = true;
