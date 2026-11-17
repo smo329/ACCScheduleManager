@@ -1,4 +1,4 @@
-/* ACC Schedule Manager — Critical Labs coverage (one person per whole week) */
+/* ACC Schedule Manager — Provider On Call coverage (one person per whole week) */
 (function () {
   'use strict';
 
@@ -29,7 +29,7 @@
   function eligiblePeople() {
     try {
       return (profiles || [])
-        .filter(p => p.active && (p.role === 'employee' || p.role === 'manager'))
+        .filter(p => p.active && (p.role === 'provider' || p.role === 'manager' || p.role === 'medical_director' || p.role === 'staff'))
         .slice().sort((a, b) => personName(a).localeCompare(personName(b)));
     } catch (_) { return []; }
   }
@@ -62,9 +62,9 @@
       if (!supabaseClient) return map;
       const { data, error } = await supabaseClient.from(TABLE)
         .select('week_start,user_id').gte('week_start', start).lte('week_start', end);
-      if (error) { console.warn('Critical Labs coverage load failed:', error); return map; }
+      if (error) { console.warn('Provider On Call coverage load failed:', error); return map; }
       (data || []).forEach(r => map.set(r.week_start, r.user_id));
-    } catch (e) { console.warn('Critical Labs coverage load failed:', e); }
+    } catch (e) { console.warn('Provider On Call coverage load failed:', e); }
     return map;
   }
 
@@ -83,7 +83,7 @@
     return out;
   }
 
-  /* ---- Dashboard banner: "You are covering Critical Labs this week" ---- */
+  /* ---- Dashboard banner: "You are covering Provider On Call this week" ---- */
   function ensureBannerEl() {
     let el = document.getElementById('criticalLabsBanner');
     if (el) return el;
@@ -118,7 +118,7 @@
       // button simply does nothing rather than breaking the banner.
       el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;padding:12px 14px;border-radius:10px;background:#ede9fe;color:#4c1d95;font-weight:800;font-size:13px;border:1px solid #c4b5fd';
       const label = document.createElement('span');
-      label.textContent = `🧪 You are covering Critical Labs this week (${weekLabel(weekStart)}).`;
+      label.textContent = `🧪 You are covering Provider On Call this week (${weekLabel(weekStart)}).`;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = 'Request Trade';
@@ -139,14 +139,14 @@
     };
   }
 
-  /* ---- Employee view: "My Critical Labs" — every week I hold ---- */
+  /* ---- Provider view: "My Provider On Call" — every week I hold ---- */
   function ensureMyCriticalLabsModal() {
     let m = document.getElementById('myCriticalLabsModal');
     if (m) return m;
     m = document.createElement('div');
     m.id = 'myCriticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Critical Labs</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p id="myCriticalLabsDescription" style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Critical Labs coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.</p><div style="display:flex;gap:8px;margin-bottom:12px"><button type="button" id="myCriticalLabsTabCurrent" class="modal-button cancel-button">Current &amp; upcoming</button><button type="button" id="myCriticalLabsTabPrevious" class="modal-button cancel-button">Previous weeks</button></div><div id="myCriticalLabsTradeWrap" style="display:none;text-align:right;margin:0 0 12px"><button type="button" class="modal-button save-button" id="myCriticalLabsTradeBtn">Request Trade</button><div id="myCriticalLabsTradeChooser" style="display:none;margin-top:8px"><label for="myCriticalLabsWeekSelect" style="color:#475569;font-size:13px;margin-right:8px">Week to trade</label><select id="myCriticalLabsWeekSelect"></select> <button type="button" class="modal-button save-button" id="myCriticalLabsTradeGo">Continue</button></div></div><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">My Provider On Call</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="myCriticalLabsMessage" class="person-editor-message"></div><p id="myCriticalLabsDescription" style="color:#475569;font-size:13px;margin:0 0 12px">Every week you hold Provider On Call coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.</p><div style="display:flex;gap:8px;margin-bottom:12px"><button type="button" id="myCriticalLabsTabCurrent" class="modal-button cancel-button">Current &amp; upcoming</button><button type="button" id="myCriticalLabsTabPrevious" class="modal-button cancel-button">Previous weeks</button></div><div id="myCriticalLabsTradeWrap" style="display:none;text-align:right;margin:0 0 12px"><button type="button" class="modal-button save-button" id="myCriticalLabsTradeBtn">Request Trade</button><div id="myCriticalLabsTradeChooser" style="display:none;margin-top:8px"><label for="myCriticalLabsWeekSelect" style="color:#475569;font-size:13px;margin-right:8px">Week to trade</label><select id="myCriticalLabsWeekSelect"></select> <button type="button" class="modal-button save-button" id="myCriticalLabsTradeGo">Continue</button></div></div><div id="myCriticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button cancel-button" id="myCriticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#myCriticalLabsClose').onclick = () => m.classList.remove('show');
@@ -180,9 +180,9 @@
     if (desc && readOnly) {
       let name = 'This person';
       try { if (typeof getProfileName === 'function' && currentProfile) name = getProfileName(currentProfile); } catch (_) {}
-      desc.textContent = name + '’s Critical Labs coverage weeks. Current and upcoming weeks are listed first, with past weeks under Previous weeks.';
+      desc.textContent = name + '’s Provider On Call coverage weeks. Current and upcoming weeks are listed first, with past weeks under Previous weeks.';
     } else if (desc) {
-      desc.textContent = 'Every week you hold Critical Labs coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.';
+      desc.textContent = 'Every week you hold Provider On Call coverage. Current and upcoming weeks are listed first, with past weeks under Previous weeks. Request a 1:1 trade for any current or upcoming week.';
     }
     const tradeWrap = m.querySelector('#myCriticalLabsTradeWrap');
     const tradeChooser = m.querySelector('#myCriticalLabsTradeChooser');
@@ -205,7 +205,7 @@
       return;
     }
     if (!rows.length) {
-      box.innerHTML = `<div class="my-schedule-empty">${readOnly ? 'This person has no Critical Labs coverage weeks.' : 'You have no Critical Labs coverage weeks.'}</div>`;
+      box.innerHTML = `<div class="my-schedule-empty">${readOnly ? 'This person has no Provider On Call coverage weeks.' : 'You have no Provider On Call coverage weeks.'}</div>`;
       return;
     }
     /* Closest to the current week first: current and upcoming weeks in
@@ -261,7 +261,7 @@
     m = document.createElement('div');
     m.id = 'criticalLabsModal';
     m.className = 'modal-overlay';
-    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Critical Labs Coverage</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="criticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">One person per whole week. Only admins can change this. The assigned person sees a banner on their dashboard, and the coverage shows on everybody's Calendar &amp; Print.</p><div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" id="criticalLabsFilterRecent" class="modal-button cancel-button">Recent (6 weeks)</button><button type="button" id="criticalLabsFilterAll" class="modal-button cancel-button">All weeks in quarter</button></div><div id="criticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button save-button" id="criticalLabsSave" type="button">Save Coverage</button><button class="modal-button cancel-button" id="criticalLabsClose" type="button">Close</button></div></div>`;
+    m.innerHTML = `<div class="modal modal-wide"><div class="modal-header"><div class="modal-title">Provider On Call Coverage</div><button class="modal-close" type="button">×</button></div><div class="modal-body modal-scroll"><div id="criticalLabsMessage" class="person-editor-message"></div><p style="color:#475569;font-size:13px;margin:0 0 12px">One person per whole week. Only admins can change this. The assigned person sees a banner on their dashboard, and the coverage shows on everybody's Calendar &amp; Print.</p><div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" id="criticalLabsFilterRecent" class="modal-button cancel-button">Recent (6 weeks)</button><button type="button" id="criticalLabsFilterAll" class="modal-button cancel-button">All weeks in quarter</button></div><div id="criticalLabsWeeks"></div></div><div class="modal-footer"><button class="modal-button save-button" id="criticalLabsSave" type="button">Save Coverage</button><button class="modal-button cancel-button" id="criticalLabsClose" type="button">Close</button></div></div>`;
     document.body.appendChild(m);
     m.querySelector('.modal-close').onclick = () => m.classList.remove('show');
     m.querySelector('#criticalLabsClose').onclick = () => m.classList.remove('show');
@@ -342,7 +342,7 @@
         }
         panelPending = new Map();
         msg.className = 'person-editor-message success';
-        msg.textContent = changed ? 'Critical Labs coverage saved.' : 'No changes to save.';
+        msg.textContent = changed ? 'Provider On Call coverage saved.' : 'No changes to save.';
         await renderPanel();
         try { await refreshBanner(); } catch (_) {}
       } catch (e) {
