@@ -6,7 +6,8 @@ console.info(`[ACC Schedule Manager] premium layout loaded: ${VERSION}`);
 function role(){try{return currentProfile?.role||null}catch(_){return null}}
 function isAdmin(){return role()==='admin'}
 function isManager(){return role()==='manager'}
-function isEmployee(){return role()==='employee'}
+function isManagerLike(){return ['manager','staff','medical_director'].includes(role())}
+function isProvider(){return role()==='provider'}
 function isExternal(){return role()==='external'}
 function closeSidebar(){document.getElementById('accSidebar')?.classList.remove('open');document.getElementById('accSidebarBackdrop')?.classList.remove('show')}
 function openSidebar(){closeUserMenu();if(window.innerWidth>900)return;document.getElementById('accSidebar')?.classList.add('open');document.getElementById('accSidebarBackdrop')?.classList.add('show')}
@@ -14,8 +15,8 @@ function invoke(fn){closeSidebar();try{fn?.()}catch(e){console.warn(e)}}
 function actions(){
  const common=[
   {section:'Scheduling',id:'navSchedule',icon:'▦',label:'Schedule',run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
-  {section:'Scheduling',id:'navMySchedule',icon:'◫',label:isExternal()?'My Additional Shifts':'My Schedule',show:isEmployee()||isExternal(),run:()=>window.openMySchedule?.()},
-  {section:'Scheduling',id:'navAdditional',icon:'＋',label:'Additional Shifts',show:isAdmin()||isEmployee()||isExternal(),run:()=>window.openOpenShifts?.()},
+  {section:'Scheduling',id:'navMySchedule',icon:'◫',label:isExternal()?'My Additional Shifts':'My Schedule',show:isProvider()||isExternal(),run:()=>window.openMySchedule?.()},
+  {section:'Scheduling',id:'navAdditional',icon:'＋',label:'Additional Shifts',show:isAdmin()||isProvider()||isExternal(),run:()=>window.openOpenShifts?.()},
   // Calendar & Print was previously appended to the sidebar by calendar-print-patches.js
   // (installNav, on fixed timers and on refreshPremiumLayout only). Every renderSidebar()
   // rebuilds the sidebar from actions() and wipes that appended button, and the login path
@@ -32,9 +33,10 @@ function actions(){
   // button, so during the login/refresh render storm it kept vanishing and
   // reappearing — the flicker. Making it a first-class action here means
   // renderSidebar() includes it on every rebuild, in a stable position.
-  // Visibility mirrors trade-center's eligible(): admins, managers and
-  // employees only, never externals, never in view-as mode.
-  {section:'Scheduling',id:'navTradeCenter',icon:'⇄',label:'Trade Center',show:(isAdmin()||isManager()||isEmployee())&&!window.viewAsActive,run:()=>window.openTradeCenter?.()},
+  // Visibility mirrors trade-center's eligible(): admins, managers,
+  // medical directors and providers only, never staff, never externals,
+  // never in view-as mode.
+  {section:'Scheduling',id:'navTradeCenter',icon:'⇄',label:'Trade Center',show:(isAdmin()||isManager()||role()==='medical_director'||isProvider())&&!window.viewAsActive,run:()=>window.openTradeCenter?.()},
  ];
  const admin=[
   // Use the separated modes already defined in admin-experience-patches.js instead of
@@ -46,8 +48,8 @@ function actions(){
   {section:'Admin',id:'navQuarter',icon:'◉',label:'Quarter Dashboard',show:isAdmin(),run:()=>window.openQuarterDashboardPanel?.()||window.openAdmin?.()},
   {section:'Admin',id:'navIssues',icon:'◇',label:'Coverage & Exceptions',show:isAdmin(),run:()=>window.openIssuesCenter?.(),badge:'issues'},
   {section:'Admin',id:'navPeople',icon:'◌',label:'Manage People',show:isAdmin(),run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
-  {section:'Admin',id:'navHistory',icon:'≡',label:'History',show:isAdmin(),run:()=>window.openScheduleHistory?.()},
-  {section:'Admin',id:'navCriticalLabs',icon:'🧪',label:'Critical Labs',show:isAdmin(),run:()=>window.openCriticalLabsManager?.()},
+  {section:'Admin',id:'navHistory',icon:'≡',label:'History',show:isAdmin()||isManagerLike(),run:()=>window.openScheduleHistory?.()},
+  {section:'Admin',id:'navCriticalLabs',icon:'🧪',label:'Provider On Call',show:isAdmin(),run:()=>window.openCriticalLabsManager?.()},
   {section:'Admin',id:'navHolidays',icon:'🗓',label:'Holidays',show:isAdmin(),run:()=>window.openHolidayModal?.()},
   // Archive sits last in the Admin section (the bottom nav item for
   // admins) and is a placeholder for now: it shows a coming-soon modal
@@ -57,8 +59,8 @@ function actions(){
   {section:'Admin',id:'navArchive',icon:'▣',label:'Archive',show:isAdmin(),run:()=>openArchiveComingSoon()},
  ];
  const manager=[
-  {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManager(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
-  {section:'Management',id:'navManagerAdditional',icon:'＋',label:'Additional Shifts',show:isManager(),run:()=>window.openOpenShifts?.()},
+  {section:'Management',id:'navManagerSchedule',icon:'◎',label:'Schedule View',show:isManagerLike(),run:()=>document.querySelector('.schedule-header')?.scrollIntoView({behavior:'smooth',block:'start'})},
+  {section:'Management',id:'navManagerAdditional',icon:'＋',label:'Additional Shifts',show:isManagerLike(),run:()=>window.openOpenShifts?.()},
  ];
  return [...common,...admin,...manager].filter(x=>x.show!==false);
 }
@@ -114,7 +116,7 @@ function getPeriod(){try{return activeSchedulingPeriod||adminSchedulingPeriod||n
 function ensureDashboardStrip(){
  const main=document.querySelector('.main-content');const header=document.querySelector('.schedule-header');if(!main||!header)return;
  let heading=document.getElementById('accMainHeading');if(!heading){heading=document.createElement('div');heading.id='accMainHeading';heading.className='acc-main-heading';header.insertAdjacentElement('beforebegin',heading)}
- heading.innerHTML=`<div><h2>${isAdmin()?'Schedule Overview':isManager()?'Schedule View':isExternal()?'Additional Shift Hub':'My Scheduling Workspace'}</h2><p>${isAdmin()?'Monitor the current quarter, staffing, and coverage.':isManager()?'View schedules and staffing updates.':isExternal()?'View and manage your claimed Additional Shifts.':'Build your schedule and track your Additional Shifts.'}</p></div>`;
+ heading.innerHTML=`<div><h2>${isAdmin()?'Schedule Overview':isManagerLike()?'Schedule View':isExternal()?'Additional Shift Hub':'My Scheduling Workspace'}</h2><p>${isAdmin()?'Monitor the current quarter, staffing, and coverage.':isManagerLike()?'View schedules and staffing updates.':isExternal()?'View and manage your claimed Additional Shifts.':'Build your schedule and track your Additional Shifts.'}</p></div>`;
  let strip=document.getElementById('accDashboardStrip');if(!strip){strip=document.createElement('div');strip.id='accDashboardStrip';strip.className='acc-dashboard-strip';heading.insertAdjacentElement('afterend',strip)}
  renderDashboardStrip();
 }
@@ -123,19 +125,19 @@ function jumpToWeek(){document.querySelector('.schedule-header')?.scrollIntoView
 function renderDashboardStrip(){
  const strip=document.getElementById('accDashboardStrip');if(!strip)return;
  let people='—',weeks='—',status='—',issues='0';
- try{people=(profiles||[]).filter(p=>p.active&&p.role==='employee').length}catch(_){}
+ try{people=(profiles||[]).filter(p=>p.active&&p.role==='provider').length}catch(_){}
  try{const p=getPeriod();if(p&&typeof getWeekStartDatesForPeriod==='function')weeks=getWeekStartDatesForPeriod(p).length}catch(_){}
- try{if(isEmployee()&&typeof getCurrentWeekSubmission==='function'){const s=getCurrentWeekSubmission();status=s?.status==='submitted'?'Submitted':s?.status==='needs_resubmission'?'Resubmit':'Draft'}else status=isAdmin()?'Admin':'View'}catch(_){}
+ try{if(isProvider()&&typeof getCurrentWeekSubmission==='function'){const s=getCurrentWeekSubmission();status=s?.status==='submitted'?'Submitted':s?.status==='needs_resubmission'?'Resubmit':'Draft'}else status=isAdmin()?'Admin':'View'}catch(_){}
  try{issues=String(window.accScheduleIssuesSummary?.count||0)}catch(_){}
  let cards=[];
  if(isAdmin()) cards=[
-  {icon:'👥',label:'People',value:people,sub:'Active employees',run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
+  {icon:'👥',label:'People',value:people,sub:'Active providers',run:()=>window.openPeopleManagement?.()||window.openAdmin?.()},
   {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
   {icon:'✓',label:'Access',value:'Admin',sub:'Full control',run:()=>{if(typeof window.openViewAsPicker==='function')window.openViewAsPicker();else if(window.openQuarterDashboardPanel)window.openQuarterDashboardPanel();else if(window.openAdmin)window.openAdmin();}},
   {icon:'⚠',label:'Issues',value:issues,sub:'Coverage & exceptions',run:()=>window.openIssuesCenter?.()}
  ];
- else if(isManager()) cards=[
-  {icon:'👥',label:'People',value:people,sub:'Active employees',run:jumpToWeek},
+ else if(isManagerLike()) cards=[
+  {icon:'👥',label:'People',value:people,sub:'Active providers',run:jumpToWeek},
   {icon:'▦',label:'Weeks',value:weeks,sub:'Selected quarter',run:jumpToQuarter},
   {icon:'👁',label:'Mode',value:'View only',sub:'Schedule access',run:jumpToWeek},
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Schedule updates',run:()=>window.openNotificationCenter?.()}
@@ -149,10 +151,10 @@ function renderDashboardStrip(){
  else cards=[
   {icon:'＋',label:'Additional',value:'Available',sub:'Shift signup',run:()=>window.openOpenShifts?.()},
   {icon:'▦',label:'My Schedule',value:'View',sub:'Your schedule',run:()=>window.openMySchedule?.()},
-  /* Employees get a My Critical Labs card like the My Holidays card.
-     In view-as mode the strip mirrors the viewed employee's strip, so
+  /* Providers get a My Provider On Call card like the My Holidays card.
+     In view-as mode the strip mirrors the viewed provider's strip, so
      the card stays; the modal itself is read-only while viewing as. */
-  {icon:'🧪',label:'My Critical Labs',value:'View',sub:'Your coverage weeks',run:()=>window.openMyCriticalLabs?.()},
+  {icon:'🧪',label:'My Provider On Call',value:'View',sub:'Your coverage weeks',run:()=>window.openMyCriticalLabs?.()},
   {icon:'🔔',label:'Notifications',value:'Open',sub:'Scheduling alerts',run:()=>window.openNotificationCenter?.()}
  ];
  if(window.viewAsActive&&window.viewAsProfile){
@@ -186,7 +188,9 @@ function userMenuRoleLabel(){
   const r=currentProfile?.role;
   if(r==='admin')return 'Administrator';
   if(r==='manager')return 'Manager';
-  if(r==='employee')return 'Employee';
+  if(r==='staff')return 'Staff';
+  if(r==='medical_director')return 'Medical Director';
+  if(r==='provider')return 'Provider';
   if(r==='external')return 'External Worker';
  }catch(_){}
  return '';
