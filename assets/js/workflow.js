@@ -1659,6 +1659,55 @@ function renderAdminQuarterControls() {
 }
 
 
+function setCreateQuarterFormOpen(
+    open
+) {
+
+    const form =
+        document.getElementById(
+            "createQuarterForm"
+        );
+
+    const chevron =
+        document.getElementById(
+            "createQuarterChevron"
+        );
+
+    if (
+        !form
+    ) {
+        return;
+    }
+
+    form.style.display =
+        open
+            ? "block"
+            : "none";
+
+    if (
+        chevron
+    ) {
+        chevron.textContent =
+            open
+                ? "▾"
+                : "▸";
+    }
+}
+
+function toggleCreateQuarterForm() {
+
+    const form =
+        document.getElementById(
+            "createQuarterForm"
+        );
+
+    setCreateQuarterFormOpen(
+        !form ||
+            form.style.display ===
+                "none"
+    );
+}
+
 async function createCustomQuarter() {
 
     clearError();
@@ -1924,6 +1973,10 @@ async function createCustomQuarter() {
             endInput.value =
                 "";
         }
+
+        setCreateQuarterFormOpen(
+            false
+        );
 
         await loadWeek();
 
