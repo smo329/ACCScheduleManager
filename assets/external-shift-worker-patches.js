@@ -12,8 +12,10 @@
   function labelForRole(role) {
     if (role === "admin") return "Administrator";
     if (role === "manager") return "Clinic Manager";
+    if (role === "staff") return "Staff";
+    if (role === "medical_director") return "Medical Director";
     if (role === "external") return "External Shift Worker";
-    return "Employee";
+    return "Provider";
   }
 
   function fmtHour(value) {
@@ -42,6 +44,29 @@
       option.value = "manager";
       option.textContent = "Clinic Manager";
       roleSelect.appendChild(option);
+    }
+
+    if (![...roleSelect.options].some(o => o.value === "staff")) {
+      const option = document.createElement("option");
+      option.value = "staff";
+      option.textContent = "Staff";
+      roleSelect.appendChild(option);
+    }
+
+    if (![...roleSelect.options].some(o => o.value === "medical_director")) {
+      const option = document.createElement("option");
+      option.value = "medical_director";
+      option.textContent = "Medical Director";
+      roleSelect.appendChild(option);
+    }
+
+    /* Fallback: if the base #newRole select ever ships an "employee"
+       option again, rename it in place so new people are created as
+       providers. (index.html now ships "provider" directly.) */
+    const legacyOption = [...roleSelect.options].find(o => o.value === "employee");
+    if (legacyOption) {
+      legacyOption.value = "provider";
+      legacyOption.textContent = "Provider";
     }
 
     if (![...roleSelect.options].some(o => o.value === "external")) {
@@ -155,7 +180,7 @@
         if (children[2].textContent !== desiredRole) children[2].textContent = desiredRole;
       }
 
-      if (profile.role !== "employee") {
+      if (profile.role !== "provider") {
         card.querySelectorAll("button").forEach(button => {
           if (["Change Picks"].includes(button.textContent.trim())) button.remove();
         });
