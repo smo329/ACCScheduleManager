@@ -53,8 +53,10 @@
     function roleLabel(role) {
         if (role === "admin") return "Administrator";
         if (role === "manager") return "Manager";
+        if (role === "staff") return "Staff";
+        if (role === "medical_director") return "Medical Director";
         if (role === "external") return "External worker";
-        return "Employee";
+        return "Provider";
     }
 
     function ensureStyles() {
@@ -198,7 +200,7 @@
             .sort((a, b) => displayName(a).localeCompare(displayName(b)));
 
         const generic = [
-            { id: "generic-employee", first_name: "Generic", last_name: "Employee", role: "employee", clinic_site: "Turfland", active: true },
+            { id: "generic-employee", first_name: "Generic", last_name: "Provider", role: "provider", clinic_site: "Turfland", active: true },
             { id: "generic-manager", first_name: "Generic", last_name: "Manager", role: "manager", clinic_site: null, active: true },
             { id: "generic-external", first_name: "Generic", last_name: "External Worker", role: "external", clinic_site: null, active: true }
         ];
