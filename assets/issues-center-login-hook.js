@@ -6,7 +6,7 @@
     if(document.getElementById('employeeDashboardCleanupScript'))return;
     const s=document.createElement('script');
     s.id='employeeDashboardCleanupScript';
-    s.src='assets/employee-dashboard-cleanup.js?v=20261029-2';
+    s.src='assets/employee-dashboard-cleanup.js?v=20261029-3';
     document.body.appendChild(s);
   }
 
@@ -15,7 +15,7 @@
       if(currentProfile?.role==='admin'){
         window.refreshIssuesCenter?.();
         setTimeout(()=>window.refreshCompactAdminMenu?.(),250);
-      } else if(['employee','external','manager'].includes(currentProfile?.role)){
+      } else if(['provider','external','manager','staff','medical_director'].includes(currentProfile?.role)){
         loadPersonalDashboardCleanup();
       }
     }catch(_){}
