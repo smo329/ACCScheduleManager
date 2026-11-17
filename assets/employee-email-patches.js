@@ -4,8 +4,12 @@
  * opens, trade updates, and the end-of-day additional-shift digest.
  * Which toggles appear depends on the role: admins and managers get
  * trade updates plus both digests (new shifts, and sign-ups/removals);
- * employees get schedule opens, trades, and the new-shifts digest;
- * external workers get only the new-shifts digest. Emails go to the user's verified notification email when one
+ * providers get schedule opens, trades, and the new-shifts digest;
+ * medical directors get trades plus both digests; staff get the
+ * sign-up digest plus the new-shifts digest (no trades); external
+ * workers get only the new-shifts digest. Managers, staff, and medical
+ * directors also get a daily digest of admin-made schedule changes.
+ * Emails go to the user's verified notification email when one
  * is set, otherwise to the login email; @uky.edu addresses are never
  * emailed (UKY mail quarantines these at the admin level). The email
  * address itself is set through a verification-code flow, never saved
@@ -97,7 +101,7 @@
             '<label id="employeeEmailTradesRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
                 '<input id="employeeEmailTrades" type="checkbox" style="width:auto;margin-top:3px;">' +
                 '<span><strong>Email me about trades</strong>' +
-                '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">Sent when you receive a trade request, and when a trade you proposed is accepted or declined. Covers regular, Critical Labs, and holiday trades.</span></span>' +
+                '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">Sent when you receive a trade request, and when a trade you proposed is accepted or declined. Covers regular, Provider On Call, and holiday trades.</span></span>' +
             "</label>" +
             '<label id="employeeEmailDigestRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
                 '<input id="employeeEmailDigest" type="checkbox" style="width:auto;margin-top:3px;">' +
@@ -108,6 +112,11 @@
                 '<input id="employeeEmailClaimDigest" type="checkbox" style="width:auto;margin-top:3px;">' +
                 '<span><strong>Email me a digest of additional shift sign-ups</strong>' +
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when someone signed up for or was removed from an additional shift.</span></span>' +
+            "</label>" +
+            '<label id="employeeEmailScheduleChangeDigestRow" style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin-bottom:14px;">' +
+                '<input id="employeeEmailScheduleChangeDigest" type="checkbox" style="width:auto;margin-top:3px;">' +
+                '<span><strong>Email me a digest of schedule changes</strong>' +
+                '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when an admin changed a schedule or added leave. Managers, staff, and medical directors only.</span></span>' +
             "</label>" +
             '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button" style="margin-bottom:14px;">Save Notification Settings</button>' +
             '<div id="employeeEmailUkyNotice" class="account-settings-help" style="display:none;"></div>' +
@@ -129,19 +138,23 @@
 
         // Which toggles appear follows the in-app notifications each role
         // actually receives, plus the leadership digests: schedule opens
-        // go to employees only, trades to admins/managers/employees, the
-        // new-shifts digest to every role, and the sign-up digest to
-        // admins/managers only. Hidden toggles stay in the DOM (unchecked)
+        // go to providers only, trades to admins/managers/medical
+        // directors/providers, the new-shifts digest to every role, and
+        // the sign-up digest to admins/managers/staff/medical directors.
+        // the schedule-changes digest to managers/staff/medical directors only.
+        // Hidden toggles stay in the DOM (unchecked)
         // so saving still writes all columns.
         const accountRole = (typeof currentProfile !== "undefined" && currentProfile) ? currentProfile.role : null;
         const scheduleOpenRow = section.querySelector("#employeeEmailScheduleOpenRow");
         const tradesRow = section.querySelector("#employeeEmailTradesRow");
         const digestRow = section.querySelector("#employeeEmailDigestRow");
         const claimDigestRow = section.querySelector("#employeeEmailClaimDigestRow");
-        if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "employee" ? "flex" : "none";
-        if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "employee") ? "flex" : "none";
+        const scheduleChangeDigestRow = section.querySelector("#employeeEmailScheduleChangeDigestRow");
+        if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "provider" ? "flex" : "none";
+        if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "medical_director" || accountRole === "provider") ? "flex" : "none";
         if (digestRow) digestRow.style.display = "flex";
-        if (claimDigestRow) claimDigestRow.style.display = (accountRole === "admin" || accountRole === "manager") ? "flex" : "none";
+        if (claimDigestRow) claimDigestRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
+        if (scheduleChangeDigestRow) scheduleChangeDigestRow.style.display = (accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
 
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
         section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
@@ -159,9 +172,13 @@
         if (!section || typeof currentUser === "undefined" || !currentUser) return;
 
         const loginEmail = currentUser.email || "";
+        // NOTE: schedule_change_digest_enabled is added by
+        // schedule_change_notifications_schema.sql — that migration must be
+        // applied before this file is pushed, or this select fails and no
+        // preferences load.
         const { data, error } = await supabaseClient
             .from("notification_preferences")
-            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled, open_shift_claim_digest_enabled, notification_email, notification_email_verified")
+            .select("schedule_open_email_enabled, trade_email_enabled, open_shift_digest_enabled, open_shift_claim_digest_enabled, schedule_change_digest_enabled, notification_email, notification_email_verified")
             .eq("user_id", currentUser.id)
             .maybeSingle();
         if (error) {
@@ -176,6 +193,8 @@
             Boolean(data && data.open_shift_digest_enabled);
         section.querySelector("#employeeEmailClaimDigest").checked =
             Boolean(data && data.open_shift_claim_digest_enabled);
+        section.querySelector("#employeeEmailScheduleChangeDigest").checked =
+            Boolean(data && data.schedule_change_digest_enabled);
 
         const verifiedEmail = data && data.notification_email_verified ? (data.notification_email || "") : "";
         const addressInput = section.querySelector("#employeeEmailAddress");
@@ -299,8 +318,9 @@
         const trades = document.getElementById("employeeEmailTrades");
         const digest = document.getElementById("employeeEmailDigest");
         const claimDigest = document.getElementById("employeeEmailClaimDigest");
+        const scheduleChangeDigest = document.getElementById("employeeEmailScheduleChangeDigest");
         const button = document.getElementById("saveEmployeeEmailButton");
-        if (!scheduleOpen || !trades || !digest || !claimDigest || !button) return;
+        if (!scheduleOpen || !trades || !digest || !claimDigest || !scheduleChangeDigest || !button) return;
 
         button.disabled = true;
         button.textContent = "Saving...";
@@ -313,6 +333,7 @@
                     trade_email_enabled: trades.checked,
                     open_shift_digest_enabled: digest.checked,
                     open_shift_claim_digest_enabled: claimDigest.checked,
+                    schedule_change_digest_enabled: scheduleChangeDigest.checked,
                     updated_at: new Date().toISOString()
                 }, { onConflict: "user_id" });
             if (error) throw new Error(error.message);
