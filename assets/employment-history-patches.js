@@ -29,7 +29,7 @@
   }
 
   function employeeVisibleThisWeek(profile) {
-    if (!profile || profile.role !== "employee") return false;
+    if (!profile || profile.role !== "provider") return false;
 
     const { start, end } = currentWeekRange();
     const periods = employmentPeriodsByUser[profile.id] || [];
@@ -79,7 +79,7 @@
     const originalCanEditProfile = canEditProfile;
 
     canEditProfile = function (profile) {
-      if (profile && profile.role === "employee" && profile.active !== true) {
+      if (profile && profile.role === "provider" && profile.active !== true) {
         return false;
       }
 
@@ -104,7 +104,7 @@
 
         cell.colSpan = currentProfile.role === "admin" ? 13 : 12;
         cell.className = "empty-cell";
-        cell.textContent = "No employees assigned to this clinic for this week.";
+        cell.textContent = "No providers assigned to this clinic for this week.";
 
         row.appendChild(cell);
         body.appendChild(row);
@@ -118,7 +118,7 @@
             const nameCell = row.querySelector(".employee-name");
             if (nameCell) {
               nameCell.title =
-                "Former employee — shown because this week falls within their employment history.";
+                "Former provider — shown because this week falls within their employment history.";
             }
           }
 
@@ -158,7 +158,7 @@
       <label for="newEmploymentStartDate">Employment Start Date</label>
       <input id="newEmploymentStartDate" type="date" value="${todayKey()}">
       <div style="font-size:12px;color:#64748b;margin-top:4px;">
-        Used for Employee accounts so mid-period starts display correctly.
+        Used for Provider accounts so mid-period starts display correctly.
       </div>
     `;
 
@@ -210,8 +210,8 @@
         return;
       }
 
-      if (role === "employee" && !startDate) {
-        errorBox.textContent = "Employment start date is required for employees.";
+      if (role === "provider" && !startDate) {
+        errorBox.textContent = "Employment start date is required for providers.";
         errorBox.style.display = "block";
         return;
       }
@@ -243,13 +243,13 @@
         );
 
       button.disabled = false;
-      button.textContent = "Add Employee";
+      button.textContent = "Add Person";
 
       if (error || data?.error) {
         errorBox.textContent =
           data?.error ||
           error?.message ||
-          "Unable to add employee.";
+          "Unable to add person.";
         errorBox.style.display = "block";
         return;
       }
@@ -268,7 +268,7 @@
     setPersonActive = async function (profile, active) {
       let dateValue;
 
-      if (profile.role === "employee") {
+      if (profile.role === "provider") {
         dateValue = prompt(
           active
             ? "Employment start date for this active period (YYYY-MM-DD):"
@@ -299,7 +299,7 @@
         user_id: profile.id
       };
 
-      if (profile.role === "employee") {
+      if (profile.role === "provider") {
         if (active) {
           body.employment_start_date = dateValue;
         } else {
@@ -324,7 +324,7 @@
   // employed. The save payload (set_employment_period, latest period id) is
   // unchanged from the prompt version.
   async function editEmploymentHistory(profile, button) {
-    if (!profile || profile.role !== "employee") return;
+    if (!profile || profile.role !== "provider") return;
 
     // Toggle: clicking Employment Dates again closes an already-open editor.
     const card = button?.closest(".person-card")
@@ -423,7 +423,7 @@
     if (!container) return;
 
     profiles.forEach((profile) => {
-      if (profile.role !== "employee") return;
+      if (profile.role !== "provider") return;
 
       const card = container.querySelector(`.person-card[data-user-id="${profile.id}"]`);
       if (!card || card.querySelector(".employment-dates-button")) return;
