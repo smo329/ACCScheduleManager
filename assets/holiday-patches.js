@@ -221,7 +221,7 @@
     function turflandEmployees() {
         try {
             return (profiles || []).filter(function (p) {
-                return p.active && p.role === "employee" && p.clinic_site === "Turfland";
+                return p.active && p.role === "provider" && p.clinic_site === "Turfland";
             }).sort(function (a, b) { return getProfileName(a).localeCompare(getProfileName(b)); });
         } catch (_) { return []; }
     }
@@ -383,13 +383,13 @@
         };
     }
 
-    /* Employees propose trades; admins do not originate them. View-as
+    /* Providers propose trades; admins do not originate them. View-as
        uses isViewedTurflandEmployee instead, so an admin viewing as
        someone else sees that person's holidays read-only and can never
        act as them. */
     function isTurflandEmployee() {
         try {
-            return !window.viewAsActive && currentProfile && currentProfile.role === "employee"
+            return !window.viewAsActive && currentProfile && currentProfile.role === "provider"
                 && currentProfile.clinic_site === "Turfland";
         } catch (_) { return false; }
     }
@@ -399,7 +399,7 @@
        which view-as swaps to the viewed person's row. */
     function isViewedTurflandEmployee() {
         try {
-            return !!window.viewAsActive && currentProfile && currentProfile.role === "employee"
+            return !!window.viewAsActive && currentProfile && currentProfile.role === "provider"
                 && currentProfile.clinic_site === "Turfland";
         } catch (_) { return false; }
     }
@@ -482,7 +482,7 @@
             }).join("");
             return "<tr><td>" + esc(getProfileName(p)) + "</td>"
                 + '<td><select data-assign-user="' + esc(p.id) + '">' + opts + "</select></td></tr>";
-        }).join("") || '<tr><td colspan="2">No active Turfland employees.</td></tr>';
+        }).join("") || '<tr><td colspan="2">No active Turfland providers.</td></tr>';
         var typeRows = Object.keys(FALLBACK_DEFS).filter(function (k) { return defs[k]; }).map(function (k) {
             return "<tr><td><strong>" + esc(defs[k].name) + "</strong></td><td>" + esc(holidayDate(k, modalYear) || "—") + "</td>"
                 + '<td><select data-holiday-type="' + esc(k) + '">'
@@ -616,7 +616,7 @@
         }).join("") || '<tr><td colspan="4">No trades recorded for ' + modalYear + ".</td></tr>";
         box.innerHTML = "<p>Holiday trades are 1:1 swaps for one year: each side gives one holiday and receives one. "
             + "Trades recorded here take effect immediately (re-apply holidays for " + modalYear + " to update the schedule). "
-            + "Employee requests appear here as Pending until the target accepts or declines.</p>"
+            + "Provider requests appear here as Pending until the target accepts or declines.</p>"
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:640px">'
             + '<div class="form-group"><label>Giver</label><select id="tradeFromUser">' + opts + "</select></div>"
             + '<div class="form-group"><label>Giver gives</label><select id="tradeFromHoliday"></select></div>'
@@ -684,7 +684,7 @@
     }
 
     /* ------------------------------------------------------------------
-       Employee tabs: My Holidays (own coverage + propose a trade).
+       Provider tabs: My Holidays (own coverage + propose a trade).
        Incoming and outgoing requests live in Trade Center only.
        ------------------------------------------------------------------ */
     function renderMyHolidaysTab() {
@@ -768,7 +768,7 @@
         var clinicSel = document.getElementById("historyClinic");
         var modeSel = document.getElementById("historyMode");
         var provSel = document.getElementById("historyProvider");
-        provSel.innerHTML = (profiles || []).filter(function (p) { return p.active && p.role === "employee"; })
+        provSel.innerHTML = (profiles || []).filter(function (p) { return p.active && p.role === "provider"; })
             .sort(function (a, b) { return getProfileName(a).localeCompare(getProfileName(b)); })
             .map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(getProfileName(p)) + "</option>"; }).join("");
         var render = async function () {
@@ -821,7 +821,7 @@
                             }).join(", ") || "—";
                         } else {
                             who = (profiles || []).filter(function (p) {
-                                return p.active && p.role === "employee" && p.clinic_site === "Fountain Court";
+                                return p.active && p.role === "provider" && p.clinic_site === "Fountain Court";
                             }).filter(function (p) {
                                 var s = schedBy[p.id + "|" + date];
                                 return s && codeHours(s.schedule_code) > 0;
@@ -865,10 +865,10 @@
         render();
     }
 
-    /* Strip entry point: for Turfland employees the Notifications strip
+    /* Strip entry point: for Turfland providers the Notifications strip
        card becomes My Holidays (the bell already opens notifications).
        Skipped in view-as mode, and for anyone who is not a Turfland
-       employee the strip is left alone. The strip rebuilds on a timeout
+       provider the strip is left alone. The strip rebuilds on a timeout
        after each render, so this runs both now and on the next tick. */
     function holidayStripInfo() {
         try {
@@ -946,7 +946,7 @@
 
     /* ------------------------------------------------------------------
        Entry point: a Holidays item in the admin sidebar, next to
-       Critical Labs. (The old Manage People modal button is gone.)
+       Provider On Call. (The old Manage People modal button is gone.)
        ------------------------------------------------------------------ */
 
     ensureStyles();
