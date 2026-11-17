@@ -572,9 +572,17 @@ function renderPeopleList() {
                 );
 
             role.textContent =
-                profile.role === "admin"
-                    ? "Administrator"
-                    : "Employee";
+                (
+                    {
+                        admin: "Administrator",
+                        provider: "Provider",
+                        manager: "Clinic Manager",
+                        staff: "Staff",
+                        medical_director: "Medical Director",
+                        external: "External Shift Worker"
+                    }[profile.role]
+                ) ||
+                "Provider";
 
             const status =
                 document.createElement(
@@ -939,7 +947,7 @@ async function editPerson(
 
         const roleInput =
             prompt(
-                "Role: employee or admin",
+                "Role: provider, manager, staff, medical director, external, or admin",
                 profile.role
             );
 
@@ -955,12 +963,20 @@ async function editPerson(
                 .toLowerCase();
 
         if (
-            role !== "employee" &&
-            role !== "admin"
+            ![
+                "provider",
+                "manager",
+                "staff",
+                "medical_director",
+                "external",
+                "admin"
+            ].includes(
+                role
+            )
         ) {
 
             alert(
-                "Role must be employee or admin."
+                "Role must be provider, manager, staff, medical director, external, or admin."
             );
 
             return;
@@ -1315,7 +1331,7 @@ async function addEmployee() {
 
     button.disabled = false;
     button.textContent =
-        "Add Employee";
+        "Add Person";
 
     if (error) {
 
@@ -1323,7 +1339,7 @@ async function addEmployee() {
 
         errorBox.textContent =
             error.message ||
-            "Unable to add employee.";
+            "Unable to add person.";
 
         errorBox.style.display =
             "block";
@@ -1388,7 +1404,7 @@ function clearAddEmployeeForm() {
             "newRole"
         )
         .value =
-            "employee";
+            "provider";
 
     document
         .getElementById(
