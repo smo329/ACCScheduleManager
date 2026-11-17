@@ -344,7 +344,7 @@
       if (first) first.value = request.first_name;
       if (last) last.value = request.last_name;
       if (email) email.value = request.email;
-      if (role) role.value = "employee";
+      if (role) role.value = "provider";
     }, 0);
   }
 
