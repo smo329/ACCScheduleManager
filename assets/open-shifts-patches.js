@@ -1,6 +1,6 @@
 /*
  * ACC Schedule Manager - Open Shifts workflow
- * Admins publish remaining 12-hour opportunities; employees may claim
+ * Admins publish remaining 12-hour opportunities; providers may claim
  * non-overlapping blocks between 8 AM and 8 PM, minimum 2 hours.
  */
 (function () {
@@ -14,8 +14,8 @@
     return Boolean(currentProfile && currentProfile.role === "admin");
   }
 
-  function isEmployee() {
-    return Boolean(currentProfile && currentProfile.role === "employee" && currentProfile.active !== false);
+  function isProvider() {
+    return Boolean(currentProfile && currentProfile.role === "provider" && currentProfile.active !== false);
   }
 
   function esc(value) {
@@ -268,7 +268,7 @@
         lines.push(`<div class="open-shift-line"><span class="open-shift-covered">${fmtHour(c.start_hour)}–${fmtHour(c.end_hour)} — ${esc(profileName(c.user_id))}</span>${cancel}</div>`);
       } else {
         lines.push(`<div class="open-shift-line"><span class="open-shift-available">${fmtHour(item.start)}–${fmtHour(item.end)} — Available</span></div>`);
-        if (isEmployee() && item.end-item.start >= 2) {
+        if (isProvider() && item.end-item.start >= 2) {
           lines.push(`<div class="open-shift-signup" data-opp="${op.id}" data-min="${item.start}" data-max="${item.end}">
             <div><label>Start</label><select class="open-start">${options(item.start,item.end-2,item.start)}</select></div>
             <div><label>End</label><select class="open-end">${options(item.start+2,item.end,item.end)}</select></div>
