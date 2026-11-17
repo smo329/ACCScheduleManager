@@ -7,15 +7,15 @@ console.info(`[ACC Schedule Manager] dashboard rail loaded: ${VERSION}`);
 
 const role=()=>{try{return currentProfile?.role||''}catch(_){return''}};
 const isAdmin=()=>role()==='admin';
-const isEmployee=()=>role()==='employee';
+const isProvider=()=>role()==='provider';
 const isExternal=()=>role()==='external';
-const isManager=()=>role()==='manager';
+const isManager=()=>['manager','staff','medical_director'].includes(role());
 const name=()=>{try{return getProfileName(currentProfile)||'User'}catch(_){return [currentProfile?.first_name,currentProfile?.last_name].filter(Boolean).join(' ')||'User'}};
 const period=()=>{try{return allSchedulingPeriods?.find(p=>p.id===viewSchedulingPeriodId)||adminSchedulingPeriod||activeSchedulingPeriod||null}catch(_){return null}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function initials(){const parts=name().trim().split(/\s+/);return ((parts[0]?.[0]||'')+(parts.length>1?(parts.at(-1)?.[0]||''):'')).toUpperCase()||'U'}
-function roleLabel(){return ({admin:'Administrator',employee:'Employee',manager:'Clinic Manager',external:'External Shift Worker'})[role()]||role()||'User'}
+function roleLabel(){return ({admin:'Administrator',provider:'Provider',manager:'Clinic Manager',staff:'Staff',medical_director:'Medical Director',external:'External Shift Worker'})[role()]||role()||'User'}
 
 function ensureStyles(){
  if(document.getElementById('dashboardRailStyles'))return;
@@ -57,7 +57,7 @@ async function loadAccess(){
  const {data,error}=await supabaseClient.from('scheduling_period_access').select('user_id,is_open,opened_at,closed_at,updated_at,pick_order').eq('period_id',p.id);
  if(error){console.warn('Right rail access load failed',error);accessRows=[];return}accessRows=data||[];
 }
-function employeeRows(){try{return (profiles||[]).filter(p=>p.active&&p.role==='employee')}catch(_){return[]}}
+function employeeRows(){try{return (profiles||[]).filter(p=>p.active&&p.role==='provider')}catch(_){return[]}}
 function accessFor(id){return accessRows.find(x=>x.user_id===id)||null}
 function pickingRows(){
  const emps=employeeRows();
@@ -80,7 +80,7 @@ function quickActions(){
   ['👤','Add Personnel',()=>{window.openPeopleManagement?.()||window.openAdmin?.();setTimeout(()=>window.openAddEmployeeSection?.(),80)}],
   ['⚠','Review Issues',()=>window.openIssuesCenter?.()]
  ];
- if(isEmployee())return [['▦','My Schedule',()=>window.openMySchedule?.()],['＋','Additional Shifts',()=>window.openOpenShifts?.()],['🔔','Notifications',()=>window.openNotificationCenter?.()]];
+ if(isProvider())return [['▦','My Schedule',()=>window.openMySchedule?.()],['＋','Additional Shifts',()=>window.openOpenShifts?.()],['🔔','Notifications',()=>window.openNotificationCenter?.()]];
  if(isExternal())return [['＋','Additional Shifts',()=>window.openOpenShifts?.()],['▦','My Additional Shifts',()=>window.openMySchedule?.()],['🔔','Notifications',()=>window.openNotificationCenter?.()]];
  if(isManager())return [['▦','Schedule',()=>window.scrollTo({top:0,behavior:'smooth'})],['＋','Additional Shifts',()=>window.openOpenShifts?.()],['🔔','Notifications',()=>window.openNotificationCenter?.()]];
  return [];
@@ -88,11 +88,11 @@ function quickActions(){
 
 function pickingCardHtml(){
  const p=period();
- // Clinics pick independently: employees and managers see only their own
+ // Clinics pick independently: providers and managers see only their own
  // clinic's queue. Admins keep the full list (they manage the order).
  const viewerClinic=(!isAdmin()&&currentProfile?.clinic_site)||'';
  const rows=pickingRows().filter(pr=>!viewerClinic||pr.clinic_site===viewerClinic);
- return `<section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}${viewerClinic?` · ${esc(viewerClinic)}`:''}</div><div class="picking-list">${rows.map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';const arrows=isAdmin()?`<div class="picking-order"><button type="button" data-move="${esc(pr.id)}|-1" ${i===0?'disabled':''} aria-label="Move up">↑</button><button type="button" data-move="${esc(pr.id)}|1" ${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></div>`:'';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span>${arrows}</div>`}).join('')||'<div class="rail-subtle">No active employees.</div>'}</div>${isAdmin()?'<button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button>':''}</section>`;
+ return `<section class="rail-card"><div class="rail-title">Picking Status</div><div class="rail-subtle" style="margin-bottom:8px">${esc(p?.name||'Selected quarter')}${viewerClinic?` · ${esc(viewerClinic)}`:''}</div><div class="picking-list">${rows.map((pr,i)=>{const a=accessFor(pr.id);const cls=a?.is_open?'open':a?.closed_at?'done':'';const txt=a?.is_open?'Open':a?.closed_at?'Closed':'Waiting';const arrows=isAdmin()?`<div class="picking-order"><button type="button" data-move="${esc(pr.id)}|-1" ${i===0?'disabled':''} aria-label="Move up">↑</button><button type="button" data-move="${esc(pr.id)}|1" ${i===rows.length-1?'disabled':''} aria-label="Move down">↓</button></div>`:'';return `<div class="picking-row"><div class="picking-num">${i+1}</div><div class="picking-name">${esc(getProfileName(pr))}</div><span class="pick-chip ${cls}">${txt}</span>${arrows}</div>`}).join('')||'<div class="rail-subtle">No active providers.</div>'}</div>${isAdmin()?'<button class="rail-primary" id="railManagePeople" style="background:#fff;color:#17365d;border:1px solid #cad7e7;box-shadow:none">Manage People</button>':''}</section>`;
 }
 function bindPickingCard(rail){
  rail.querySelectorAll('[data-move]').forEach(b=>{b.onclick=(e)=>{e.stopPropagation();const [id,dir]=b.dataset.move.split('|');movePickingOrder(id,Number(dir))}});
@@ -114,7 +114,7 @@ function renderAdminRail(rail){
 
 function renderPersonalRail(rail){
  const title=isExternal()?'My Additional Shifts':'My Schedule';
- /* The strip now carries a My Schedule card for employees, so the
+ /* The strip now carries a My Schedule card for providers, so the
     far-right My Schedule rail card is redundant for them. Externals
     keep it: their strip has no My Schedule card. */
  const firstCard=isExternal()?`<section class="rail-card"><div class="rail-title">${esc(title)}</div><div class="rail-personal-stat">40</div><div class="rail-personal-label">weekly target hours</div><button class="rail-primary" id="railMySchedule">View ${esc(title)}</button></section>`:'';
