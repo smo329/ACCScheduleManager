@@ -1,6 +1,7 @@
 /*
  * ACC Schedule Manager - Schedule audit history
- * Admin-only viewer for immutable database audit records.
+ * Schedule audit history viewer for admins and manager-like roles
+ * (managers see their own clinic's providers only).
  */
 (function () {
   "use strict";
@@ -11,6 +12,14 @@
 
   function isAdmin() {
     return Boolean(currentProfile && currentProfile.role === "admin");
+  }
+
+  function isManagerLike() {
+    return Boolean(currentProfile && ["manager", "staff", "medical_director"].includes(currentProfile.role));
+  }
+
+  function canViewHistory() {
+    return isAdmin() || isManagerLike();
   }
 
   function profileNameById(id) {
@@ -132,7 +141,7 @@
               <select id="historyQuarterSelect"></select>
             </div>
             <div class="form-group">
-              <label for="historyEmployeeSelect">Employee</label>
+              <label for="historyEmployeeSelect">Provider</label>
               <select id="historyEmployeeSelect"></select>
             </div>
             <div class="form-group">
@@ -183,9 +192,13 @@
       quarter.appendChild(option);
     });
 
-    employee.innerHTML = `<option value="">All employees</option>`;
+    employee.innerHTML = `<option value="">All providers</option>`;
+    // Admins see every provider; manager-like roles see their own clinic
+    // only (a NULL clinic means org-wide, so they see all). The audit-log
+    // read policy enforces the same scope server-side.
+    const viewerClinic = isAdmin() ? null : (currentProfile && currentProfile.clinic_site) || null;
     [...profiles]
-      .filter(p => p.role !== "admin")
+      .filter(p => p.role !== "admin" && (!viewerClinic || p.clinic_site === viewerClinic))
       .sort((a,b) => profileNameById(a.id).localeCompare(profileNameById(b.id)))
       .forEach(profile => {
         const option = document.createElement("option");
@@ -241,7 +254,7 @@
   }
 
   async function loadHistory() {
-    if (!isAdmin()) return;
+    if (!canViewHistory()) return;
     const content = document.getElementById("historyContent");
     const summary = document.getElementById("historySummary");
     const period = selectedPeriod();
@@ -294,7 +307,7 @@
           <tr>
             <th>When</th>
             <th>Changed By</th>
-            <th>Employee</th>
+            <th>Provider</th>
             <th>Schedule Date</th>
             <th>Action</th>
             <th>Change</th>
@@ -317,7 +330,7 @@
   }
 
   window.openScheduleHistory = async function () {
-    if (!isAdmin()) return;
+    if (!canViewHistory()) return;
     ensureStyles();
     const modal = ensureModal();
     populateFilters();
