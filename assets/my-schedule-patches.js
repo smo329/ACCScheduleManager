@@ -5,7 +5,7 @@
   console.info(`[ACC Schedule Manager] my schedule patch loaded: ${VERSION}`);
 
   function role(){ try { return currentProfile?.role || ""; } catch (_) { return ""; } }
-  function eligible(){ return role()==="employee" || role()==="external"; }
+  function eligible(){ return role()==="provider" || role()==="external"; }
   function isExternal(){ return role()==="external"; }
   function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
   function localDate(key){const [y,m,d]=String(key).slice(0,10).split("-").map(Number);return new Date(y,m-1,d);}
