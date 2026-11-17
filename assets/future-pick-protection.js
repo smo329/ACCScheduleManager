@@ -39,7 +39,7 @@ function ensureStyles(){
 }
 
 function employeeOptions(){
-  try{return profiles.filter(p=>p.active&&p.role==="employee").sort((a,b)=>name(a).localeCompare(name(b))).map(p=>`<option value="${esc(p.id)}">${esc(name(p))}</option>`).join("")}catch(_){return""}
+  try{return profiles.filter(p=>p.active&&p.role==="provider").sort((a,b)=>name(a).localeCompare(name(b))).map(p=>`<option value="${esc(p.id)}">${esc(name(p))}</option>`).join("")}catch(_){return""}
 }
 
 async function addKnown(){
@@ -125,14 +125,14 @@ function markCells(){
 }
 
 function accessFor(uid){try{return schedulingAccess?.[uid]||adminSchedulingAccess?.[uid]||null}catch(_){return null}}
-function waitingEmployees(actorId,site){return profiles.filter(p=>p.active&&p.role==="employee"&&p.id!==actorId&&p.clinic_site===site&&!accessFor(p.id)?.is_open)}
+function waitingEmployees(actorId,site){return profiles.filter(p=>p.active&&p.role==="provider"&&p.id!==actorId&&p.clinic_site===site&&!accessFor(p.id)?.is_open)}
 function leaveHoursInWeek(uid,ws){let n=0;for(let i=0;i<7;i++)n+=rowsFor(uid).filter(x=>x.leave_date===add(ws,i)).reduce((a,x)=>a+Number(x.hours||0),0);return Math.min(40,n)}
 function existingClinicalHours(uid,ws){let n=0;for(let i=0;i<7;i++){const d=add(ws,i),entry=typeof getScheduleEntry==="function"?getScheduleEntry(uid,d):null;if(entry?.code==="12")n+=Math.max(0,12-rowsFor(uid).filter(x=>x.leave_date===d).reduce((a,x)=>a+Number(x.hours||0),0));else if(entry?.code==="A4")n+=4;else if(entry?.code&&Number.isFinite(Number(entry.code)))n+=Number(entry.code)}return n}
 function requiredFutureHours(uid,ws){return Math.max(0,40-leaveHoursInWeek(uid,ws)-existingClinicalHours(uid,ws))}
 function availableHours(uid,ws,site,tentative){let hours=0;for(let i=0;i<7;i++){const d=add(ws,i);if(unavailable(uid,d))continue;const own=typeof getScheduleEntry==="function"?getScheduleEntry(uid,d):null;if(own?.code&&own.code!=="0")continue;let remaining=typeof getRemainingShiftAvailability==="function"?getRemainingShiftAvailability(site,d,uid):0;if(tentative&&tentative.date===d&&tentative.site===site&&tentative.actor!==uid)remaining--;hours+=remaining>0?12:4}return hours}
 function riskForChoice(actor,date,site){const ws=weekStart(date);for(const person of waitingEmployees(actor.id,site)){const needed=requiredFutureHours(person.id,ws);if(needed<=0)continue;const before=availableHours(person.id,ws,site,null),after=availableHours(person.id,ws,site,{date,site,actor:actor.id});if(before>=needed&&after<needed)return{person,needed,after,ws}}return null}
 async function guard(profile,date,site){if(role()==="admin")return true;await load(true);const risk=riskForChoice(profile,date,site);if(!risk)return true;showError(`That shift is protected for a later picker. Taking the final ${site} opening on ${date} would leave ${name(risk.person)} with about ${risk.after} usable hours for the week of ${risk.ws}, but they still need ${risk.needed} hours after known leave.`);return false}
-function renderRiskSummary(){const el=document.getElementById("futureRiskSummary"),p=selectedPeriod();if(!el||!p)return;const risks=[];for(const person of profiles.filter(x=>x.active&&x.role==="employee"&&!accessFor(x.id)?.is_open)){for(let ws=weekStart(p.period_start);ws<=p.period_end;ws=add(ws,7)){const needed=requiredFutureHours(person.id,ws);if(needed<=0)continue;const possible=availableHours(person.id,ws,person.clinic_site,null);if(possible<needed)risks.push(`${name(person)} · week of ${ws}: ${possible}h usable / ${needed}h still needed`)}}el.innerHTML=risks.length?`<div class="future-risk"><strong>Future pick risk${risks.length===1?"":"s"}:</strong><br>${risks.slice(0,8).map(esc).join("<br>")}${risks.length>8?`<br>+ ${risks.length-8} more`:""}</div>`:""}
+function renderRiskSummary(){const el=document.getElementById("futureRiskSummary"),p=selectedPeriod();if(!el||!p)return;const risks=[];for(const person of profiles.filter(x=>x.active&&x.role==="provider"&&!accessFor(x.id)?.is_open)){for(let ws=weekStart(p.period_start);ws<=p.period_end;ws=add(ws,7)){const needed=requiredFutureHours(person.id,ws);if(needed<=0)continue;const possible=availableHours(person.id,ws,person.clinic_site,null);if(possible<needed)risks.push(`${name(person)} · week of ${ws}: ${possible}h usable / ${needed}h still needed`)}}el.innerHTML=risks.length?`<div class="future-risk"><strong>Future pick risk${risks.length===1?"":"s"}:</strong><br>${risks.slice(0,8).map(esc).join("<br>")}${risks.length>8?`<br>+ ${risks.length-8} more`:""}</div>`:""}
 
 ensureStyles();
 const originalConfirm=confirmCapacityFor12Shift;
