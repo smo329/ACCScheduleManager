@@ -5,7 +5,7 @@ const VERSION='2026.08.14.1';
 console.info(`[ACC Schedule Manager] employee dashboard cleanup loaded: ${VERSION}`);
 
 function role(){try{return currentProfile?.role||''}catch(_){return''}}
-function isPersonalRole(){return ['employee','external','manager'].includes(role())}
+function isPersonalRole(){return ['provider','external','manager','staff','medical_director'].includes(role())}
 
 function cleanTopbar(){
   if(!isPersonalRole())return;
@@ -38,13 +38,13 @@ function actionCard(card,handler,label){
 }
 
 function improveCards(){
-  if(!['employee','external'].includes(role()))return;
+  if(!['provider','external'].includes(role()))return;
   const strip=document.getElementById('accDashboardStrip');
   if(!strip)return;
   const cards=[...strip.querySelectorAll('.acc-stat-card')];
   if(!cards.length)return;
 
-  if(role()==='employee'){
+  if(role()==='provider'){
     if(cards[0]){
       actionCard(cards[0],()=>window.openOpenShifts?.(),'Open Additional Shifts');
       const sub=cards[0].querySelector('.acc-stat-sub');
@@ -56,15 +56,15 @@ function improveCards(){
       if(sub)sub.textContent='Tap to view your schedule';
     }
     if(cards[2]){
-      /* Third employee card is My Critical Labs (Week status only in
+      /* Third provider card is My Provider On Call (Week status only in
          view-as, where this pass never runs). */
-      actionCard(cards[2],()=>window.openMyCriticalLabs?.(),'Open My Critical Labs');
+      actionCard(cards[2],()=>window.openMyCriticalLabs?.(),'Open My Provider On Call');
       const sub=cards[2].querySelector('.acc-stat-sub');
       if(sub)sub.textContent='Tap to view your coverage weeks';
     }
     if(cards[3]){
       /* The holiday patch turns this card into My Holidays for Turfland
-         employees and runs after the strip rebuild but before this pass,
+         providers and runs after the strip rebuild but before this pass,
          so a card already labeled My Holidays must be left alone —
          forcing it back to Notifications would undo that swap. */
       const label=cards[3].querySelector('.acc-stat-label');
