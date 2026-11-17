@@ -43,8 +43,8 @@
     const dates=[...new Set(schedules.filter(x=>x.schedule_code==='12').map(x=>x.schedule_date))];
     dates.forEach(date=>['Turfland','Fountain Court'].forEach(site=>{const count=schedules.filter(r=>r.schedule_date===date&&r.schedule_code==='12'&&((r.work_site)||((profiles||[]).find(p=>p.id===r.user_id)?.clinic_site))===site).length;const cap=capMap.get(`${site}|${date}`)??defaultCap(site,date);if(count>cap)found.push({type:'capacity',severity:'high',title:'Clinic is over capacity',detail:`${fmtDate(date)} · ${site} · ${count} scheduled for ${cap} available shift${cap===1?'':'s'}`,date,clinic:site});}));
 
-    // Known leave for a still-waiting employee where usable dates are tight.
-    const waiting=(profiles||[]).filter(pr=>pr.active&&pr.role==='employee'&&!access.find(a=>a.user_id===pr.id)?.is_open);
+    // Known leave for a still-waiting provider where usable dates are tight.
+    const waiting=(profiles||[]).filter(pr=>pr.active&&pr.role==='provider'&&!access.find(a=>a.user_id===pr.id)?.is_open);
     const byWeek=new Map();known.forEach(k=>{if(Number(k.hours||0)<12)return;const d=new Date(k.leave_date+'T12:00:00');d.setDate(d.getDate()-d.getDay());const ws=d.toISOString().slice(0,10);const key=`${k.user_id}|${ws}`;if(!byWeek.has(key))byWeek.set(key,[]);byWeek.get(key).push(k.leave_date)});
     for(const pr of waiting){for(const [key,offDates] of byWeek){const [uid,ws]=key.split('|');if(uid!==pr.id)continue;let usable=0;for(let i=0;i<7;i++){const d=new Date(ws+'T12:00:00');d.setDate(d.getDate()+i);const dk=d.toISOString().slice(0,10);if(offDates.includes(dk))continue;const cap=capMap.get(`${pr.clinic_site}|${dk}`)??defaultCap(pr.clinic_site,dk);const count=schedules.filter(r=>r.schedule_date===dk&&r.schedule_code==='12'&&((r.work_site)||((profiles||[]).find(p=>p.id===r.user_id)?.clinic_site))===pr.clinic_site).length;if(count<cap)usable++;}if(usable<=2){found.push({type:'future',severity:usable<=1?'high':'medium',title:'Future pick risk',detail:`${personName(pr.id)} · week of ${fmtDate(ws)} · only ${usable} usable 12-hour date${usable===1?'':'s'} remain after known leave`,date:ws,user_id:pr.id});}}}
 
