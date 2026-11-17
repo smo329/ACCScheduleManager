@@ -417,9 +417,17 @@ function updateUserHeader() {
     document
         .getElementById("roleBadge")
         .textContent =
-            currentProfile.role === "admin"
-                ? "Administrator"
-                : "Employee";
+            (
+                {
+                    admin: "Administrator",
+                    provider: "Provider",
+                    manager: "Clinic Manager",
+                    staff: "Staff",
+                    medical_director: "Medical Director",
+                    external: "External Shift Worker"
+                }[currentProfile.role]
+            ) ||
+            "Provider";
 
     // The legacy topbar Admin button was removed from index.html
     // (Aug 14 2026, "Remove legacy topbar buttons") in favour of the
@@ -449,13 +457,13 @@ function updateUserHeader() {
             currentProfile.role === "admin"
                 ? `
                     <strong>Administrator:</strong>
-                    You can edit any employee's schedule${site}.
+                    You can edit any provider's schedule${site}.
                     You can also change daily Shift Capacity from 0–4 and override a full clinic when necessary.
                   `
                 : `
                     <strong>Your schedule:</strong>
                     You can edit only your own schedule.
-                    Other employees' schedules are read-only${site}.
+                    Other providers' schedules are read-only${site}.
                   `;
 }
 
@@ -792,7 +800,7 @@ async function loadWeek() {
         );
 
         showError(
-            "Unable to load employees: "
+            "Unable to load people: "
             +
             profilesResult.error.message
         );
@@ -992,7 +1000,7 @@ async function loadWeek() {
     }
 
     /*
-     * Employee editing uses the scheduling period that
+     * Provider editing uses the scheduling period that
      * overlaps the currently displayed Sunday-Saturday week.
      */
     activeSchedulingPeriod =
