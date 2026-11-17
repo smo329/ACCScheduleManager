@@ -10,10 +10,18 @@
         `[ACC Schedule Manager] manager patch loaded: ${MANAGER_PATCH_VERSION}`
     );
 
+    // Staff and Medical Director are manager-equivalent: they get the
+    // manager dashboard, notification settings, and profile-edit rules.
     function isClinicManager(profile = currentProfile) {
         return Boolean(
             profile &&
-            profile.role === "manager"
+            [
+                "manager",
+                "staff",
+                "medical_director"
+            ].includes(
+                profile.role
+            )
         );
     }
 
@@ -83,8 +91,7 @@
                     .filter(
                         profile =>
                             profile &&
-                            profile.role !==
-                                "manager"
+                            !["manager", "staff", "medical_director"].includes(profile.role)
                     );
             };
     }
@@ -361,7 +368,7 @@
                 ) {
                     const roleInput =
                         prompt(
-                            "Role: employee, manager, or admin",
+                            "Role: provider, manager, staff, medical director, or admin",
                             profile.role
                         );
 
@@ -378,15 +385,17 @@
 
                     if (
                         ![
-                            "employee",
+                            "provider",
                             "manager",
+                            "staff",
+                            "medical_director",
                             "admin"
                         ].includes(
                             role
                         )
                     ) {
                         alert(
-                            "Role must be employee, manager, or admin."
+                            "Role must be provider, manager, staff, medical director, or admin."
                         );
 
                         return;
@@ -499,8 +508,7 @@
                 index
             ) => {
                 if (
-                    profile.role !==
-                        "manager"
+                    !["manager", "staff", "medical_director"].includes(profile.role)
                 ) {
                     return;
                 }
@@ -524,6 +532,13 @@
                     card.children[
                         2
                     ].textContent =
+                        (
+                            {
+                                manager: "Clinic Manager",
+                                staff: "Staff",
+                                medical_director: "Medical Director"
+                            }[profile.role]
+                        ) ||
                         "Clinic Manager";
                 }
 
@@ -595,8 +610,7 @@
                         originalProfiles.filter(
                             profile =>
                                 profile &&
-                                profile.role !==
-                                    "manager"
+                                !["manager", "staff", "medical_director"].includes(profile.role)
                         );
 
                     return await originalRenderQuarterDashboard
