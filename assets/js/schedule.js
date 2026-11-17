@@ -214,7 +214,7 @@ function renderClinicHeader(
         "name-column";
 
     nameHeader.textContent =
-        "Employee";
+        "Provider";
 
     row.appendChild(
         nameHeader
@@ -376,7 +376,7 @@ function renderClinicBody(
             "empty-cell";
 
         emptyCell.textContent =
-            "No active employees assigned to this clinic.";
+            "No active people assigned to this clinic.";
 
         emptyRow.appendChild(
             emptyCell
