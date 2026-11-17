@@ -220,18 +220,18 @@
 })();
 
 (function () {
-  if (!document.querySelector('script[src="assets/employment-history-patches.js?v=20261029-1"]')) {
-    const script = document.createElement("script"); script.src = "assets/employment-history-patches.js?v=20261029-1"; script.defer = false; document.body.appendChild(script);
+  if (!document.querySelector('script[src="assets/employment-history-patches.js?v=20261029-2"]')) {
+    const script = document.createElement("script"); script.src = "assets/employment-history-patches.js?v=20261029-2"; script.defer = false; document.body.appendChild(script);
   }
 })();
 (function () {
-  if (!document.querySelector('script[src="assets/account-request-patches.js?v=20261023-1"]')) {
-    const script = document.createElement("script"); script.src = "assets/account-request-patches.js?v=20261023-1"; script.defer = false; document.body.appendChild(script);
+  if (!document.querySelector('script[src="assets/account-request-patches.js?v=20261023-2"]')) {
+    const script = document.createElement("script"); script.src = "assets/account-request-patches.js?v=20261023-2"; script.defer = false; document.body.appendChild(script);
   }
 })();
 (function () {
-  if (!document.querySelector('script[src="assets/quarter-weekend-controls-patches.js"]')) {
-    const script = document.createElement("script"); script.src = "assets/quarter-weekend-controls-patches.js"; script.defer = false; document.body.appendChild(script);
+  if (!document.querySelector('script[src="assets/quarter-weekend-controls-patches.js?v=20261117-1"]')) {
+    const script = document.createElement("script"); script.src = "assets/quarter-weekend-controls-patches.js?v=20261117-1"; script.defer = false; document.body.appendChild(script);
   }
 })();
 (function () {
