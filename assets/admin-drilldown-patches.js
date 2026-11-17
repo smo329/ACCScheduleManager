@@ -129,7 +129,7 @@
   function wirePickingRows(){
     if(!isAdmin())return;
     const rows=[...document.querySelectorAll('#accRightRail .picking-row')];
-    const ordered=typeof profiles!=='undefined'&&typeof getProfileName==='function'?[...(profiles||[])].filter(p=>p.active&&p.role==='employee'):[];
+    const ordered=typeof profiles!=='undefined'&&typeof getProfileName==='function'?[...(profiles||[])].filter(p=>p.active&&p.role==='provider'):[];
     rows.forEach(row=>{
       if(row.dataset.drillWired==='1')return;
       const label=row.querySelector('.picking-name')?.textContent.trim();
