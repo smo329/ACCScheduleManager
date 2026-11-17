@@ -483,6 +483,13 @@
             return "<tr><td>" + esc(getProfileName(p)) + "</td>"
                 + '<td><select data-assign-user="' + esc(p.id) + '">' + opts + "</select></td></tr>";
         }).join("") || '<tr><td colspan="2">No active Turfland employees.</td></tr>';
+        var typeRows = Object.keys(FALLBACK_DEFS).filter(function (k) { return defs[k]; }).map(function (k) {
+            return "<tr><td><strong>" + esc(defs[k].name) + "</strong></td><td>" + esc(holidayDate(k, modalYear) || "—") + "</td>"
+                + '<td><select data-holiday-type="' + esc(k) + '">'
+                + '<option value="official"' + (defs[k].isOfficial ? " selected" : "") + ">Observed</option>"
+                + '<option value="non"' + (!defs[k].isOfficial ? " selected" : "") + ">Non-observed</option>"
+                + "</select></td></tr>";
+        }).join("");
         box.innerHTML = groupReferenceHtml()
             + "<p>Groups are Turfland-only. Assign each provider a group for " + modalYear
             + "; on Jan 1 everyone rotates to the next group (6 → 1).</p>"
@@ -493,7 +500,11 @@
             + '<div id="holidayAssignMsg" class="holiday-note"></div>'
             + '<div class="holiday-note">Applied prefill rows for ' + modalYear + ": " + appliedCount
             + " · Providers with a group: " + assignedCount + " of " + emps.length + ".</div>"
-            + '<table class="holiday-table"><tr><th>Provider</th><th>Group for ' + modalYear + "</th></tr>" + rows + "</table>";
+            + '<table class="holiday-table"><tr><th>Provider</th><th>Group for ' + modalYear + "</th></tr>" + rows + "</table>"
+            + '<h3 style="margin-top:18px">Holiday types</h3>'
+            + "<p>Observed holidays prefill as an 8-hour shift + 4 hours leave; non-observed holidays prefill as a straight 12-hour shift. Changing a type takes effect the next time holidays are Applied for a year.</p>"
+            + '<table class="holiday-table"><tr><th>Holiday</th><th>Date (' + modalYear + ")</th><th>Type</th></tr>" + typeRows + "</table>"
+            + '<div id="holidayTypesMsg" class="holiday-note"></div>';
         document.getElementById("holidaySaveAssign").onclick = saveAssignments;
         document.getElementById("holidayRollForward").onclick = function () {
             document.querySelectorAll("[data-assign-user]").forEach(function (sel) {
@@ -504,6 +515,27 @@
                 "Rolled forward with rotation — press Save assignments to commit.";
         };
         document.getElementById("holidayApply").onclick = applyHolidays;
+        box.querySelectorAll("[data-holiday-type]").forEach(function (sel) {
+            sel.onchange = async function () {
+                var key = sel.dataset.holidayType;
+                var wantOfficial = sel.value === "official";
+                var msg = document.getElementById("holidayTypesMsg");
+                if (msg) msg.textContent = "Saving…";
+                var res = await supabaseClient.from("holiday_definitions")
+                    .update({ is_official: wantOfficial }).eq("key", key);
+                if (res.error) {
+                    if (msg) msg.textContent = "Save failed: " + res.error.message;
+                    sel.value = wantOfficial ? "non" : "official";
+                    return;
+                }
+                await loadHolidayData();
+                renderAssignTab();
+                var msg2 = document.getElementById("holidayTypesMsg");
+                if (msg2) msg2.textContent = ((defs[key] || {}).name || key) + " is now "
+                    + (wantOfficial ? "Observed (8 + leave)." : "Non-observed (12).")
+                    + " Apply holidays again to update the schedule.";
+            };
+        });
     }
 
     async function saveAssignments() {
