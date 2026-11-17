@@ -30,7 +30,7 @@
   const isAdmin = () => role() === 'admin';
   const isExternal = () => role() === 'external';
   const isViewAs = () => { try { return Boolean(window.viewAsActive); } catch (_) { return false; } };
-  const eligible = () => !isExternal() && !isViewAs() && ['admin', 'manager', 'employee'].includes(role());
+  const eligible = () => !isExternal() && !isViewAs() && ['admin', 'manager', 'medical_director', 'provider'].includes(role());
   const me = () => { try { return currentUser?.id || null; } catch (_) { return null; } };
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const localDate = k => { const [y, m, d] = String(k).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
@@ -65,7 +65,7 @@
   function eligiblePeople() {
     try {
       return (profiles || [])
-        .filter(p => p.active && (p.role === 'employee' || p.role === 'manager') && p.id !== me())
+        .filter(p => p.active && (p.role === 'provider' || p.role === 'manager' || p.role === 'medical_director') && p.id !== me())
         .slice().sort((a, b) => personName(a).localeCompare(personName(b)));
     } catch (_) { return []; }
   }
@@ -107,10 +107,10 @@
   }
 
   /* ---- Holiday trades: pending requests live in Trade Center only.
-   * Turfland employees propose from My Holidays; incoming/outgoing
+   * Turfland providers propose from My Holidays; incoming/outgoing
    * requests are managed here. Acceptance runs the holiday accept RPC,
    * which swaps the two days on the schedule immediately. ---- */
-  const isTurflandEmployee = () => { try { return !isViewAs() && currentProfile?.role === 'employee' && currentProfile?.clinic_site === 'Turfland'; } catch (_) { return false; } };
+  const isTurflandEmployee = () => { try { return !isViewAs() && currentProfile?.role === 'provider' && currentProfile?.clinic_site === 'Turfland'; } catch (_) { return false; } };
 
   async function loadHolidayTrades() {
     const uid = me();
@@ -166,7 +166,7 @@
     const other = personName(personById(otherId));
     const status = t.status;
     const statusText = { pending: 'Pending', accepted: 'Accepted', declined: 'Declined', cancelled: 'Cancelled' }[status] || status;
-    const typeText = t.trade_type === 'critical_labs' ? 'Critical Labs coverage swap' : 'Regular shift swap';
+    const typeText = t.trade_type === 'critical_labs' ? 'Provider On Call coverage swap' : 'Regular shift swap';
     const periodName = (() => { try { return (allSchedulingPeriods || []).find(p => p.id === t.period_id)?.name || ''; } catch (_) { return ''; } })();
     let actions = '';
     if (status === 'pending' && direction === 'incoming') {
@@ -281,7 +281,7 @@
         showMessage('Trade request cancelled.', 'success');
       }
       await refreshLists();
-      // A swap changes the schedule grid (and, for Critical Labs, the
+      // A swap changes the schedule grid (and, for Provider On Call, the
       // banner/calendar on next load), so reload the current week.
       try { if (typeof loadWeek === 'function') await loadWeek(); } catch (_) {}
     } catch (e) {
@@ -327,7 +327,7 @@
 
   /* ---- Propose a regular-shift trade (closed quarters only) ---- */
   async function openProposeDialog() {
-    if (isAdmin()) return;
+    if (role() !== 'provider') return;
     const modal = ensureModal();
     const wrap = document.getElementById('tradeCenterProposeWrap');
     if (!wrap) return;
@@ -423,25 +423,25 @@
     modal.classList.add('show');
     const wrap = document.getElementById('tradeCenterProposeWrap');
     if (wrap) {
-      if (isAdmin()) {
-        wrap.innerHTML = '<div class="trade-empty">Admins receive a notification when a trade is accepted. Proposing a trade needs an employee or manager schedule, so no proposer is shown here.</div>';
-      } else {
+      if (role() === 'provider') {
         wrap.innerHTML = '<button class="modal-button save-button" id="tradeCenterProposeBtn" type="button">Propose a Trade (regular shift, closed quarter)</button>';
         wrap.querySelector('#tradeCenterProposeBtn').onclick = openProposeDialog;
+      } else {
+        wrap.innerHTML = '<div class="trade-empty">You\'ll be notified when a trade is accepted. Proposing a trade needs a provider schedule, so no proposer is shown here.</div>';
       }
     }
     showMessage('', '');
     await refreshLists();
   };
 
-  /* ---- Critical Labs 1:1 swap picker (opened from the banner) ---- */
+  /* ---- Provider On Call 1:1 swap picker (opened from the banner) ---- */
   window.openCriticalLabsTradePicker = async function (bannerWeek) {
-    if (!eligible() || isAdmin()) return;
+    if (isViewAs() || role() !== 'provider') return;
     installStyles();
     const modal = ensureModal();
     modal.classList.add('show');
     const wrap = document.getElementById('tradeCenterProposeWrap');
-    if (wrap) wrap.innerHTML = '<div class="trade-empty">Loading Critical Labs coverage…</div>';
+    if (wrap) wrap.innerHTML = '<div class="trade-empty">Loading Provider On Call coverage…</div>';
     showMessage('', '');
     await refreshLists();
     if (!wrap) return;
@@ -452,8 +452,8 @@
       if (error) throw error;
       coverage = data || [];
     } catch (e) {
-      console.warn('Critical Labs trade load failed:', e);
-      wrap.innerHTML = '<div class="trade-empty">Critical Labs coverage could not be loaded.</div>';
+      console.warn('Provider On Call trade load failed:', e);
+      wrap.innerHTML = '<div class="trade-empty">Provider On Call coverage could not be loaded.</div>';
       return;
     }
     const byPerson = new Map();
@@ -467,7 +467,7 @@
       .filter(h => h.weeks.length)
       .sort((a, b) => personName(personById(a.id)).localeCompare(personName(personById(b.id))));
     if (!holders.length) {
-      wrap.innerHTML = '<div class="trade-empty">Nobody else holds a Critical Labs week to swap with, so a 1:1 Critical Labs trade is not possible right now.</div>';
+      wrap.innerHTML = '<div class="trade-empty">Nobody else holds a Provider On Call week to swap with, so a 1:1 Provider On Call trade is not possible right now.</div>';
       return;
     }
     wrap.innerHTML = `<div class="trade-form"><p style="color:#475569;font-size:13px;margin:0 0 12px">Swap your week <strong>${esc(weekLabel(bannerWeek))}</strong> for one of their coverage weeks. Both weeks move — neither person ends up without coverage.</p><label for="tradeLabsPerson">Swap with</label><select id="tradeLabsPerson">${holders.map(h => `<option value="${esc(h.id)}">${esc(personName(personById(h.id)))} (${esc(h.weeks.length)} week${h.weeks.length === 1 ? '' : 's'})</option>`).join('')}</select><label for="tradeLabsWeek">Their week you would take</label><select id="tradeLabsWeek"></select><div id="tradeLabsError" class="trade-message error" style="display:none"></div><button class="modal-button save-button" id="tradeLabsConfirm" type="button">Propose Coverage Swap</button></div>`;
@@ -500,7 +500,7 @@
         wrap.innerHTML = '';
         await refreshLists();
       } catch (e) {
-        console.warn('Critical Labs trade propose failed:', e);
+        console.warn('Provider On Call trade propose failed:', e);
         setErr(/relation .* does not exist/i.test(String(e?.message || e))
           ? 'Trade requests are not set up yet — the Trade Center database tables still need to be applied.'
           : (e?.message || 'That swap could not be proposed.'));
