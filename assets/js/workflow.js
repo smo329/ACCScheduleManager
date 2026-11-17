@@ -1377,7 +1377,7 @@ async function renderQuarterDashboard() {
         <div class="quarter-dashboard-cards">
             <div class="quarter-dashboard-card">
                 <div class="quarter-dashboard-card-label">
-                    Active Employees
+                    Active People
                 </div>
                 <div class="quarter-dashboard-card-value">
                     ${activeProfiles.length}
@@ -1416,7 +1416,7 @@ async function renderQuarterDashboard() {
             <table class="quarter-dashboard-table">
                 <thead>
                     <tr>
-                        <th>Employee</th>
+                        <th>Provider</th>
                         <th>Clinic</th>
                         <th>Pick Access</th>
                         <th>40h Weeks</th>
@@ -1835,7 +1835,7 @@ async function createCustomQuarter() {
 
     const confirmed =
         confirm(
-            `Create this scheduling quarter?\n\n${name}\n${periodStart} through ${periodEnd}\n\nAll employee pick access will begin locked.`
+            `Create this scheduling quarter?\n\n${name}\n${periodStart} through ${periodEnd}\n\nAll provider pick access will begin locked.`
         );
 
     if (
@@ -1935,12 +1935,12 @@ async function createCustomQuarter() {
                 accessError
             ) {
                 console.warn(
-                    "Quarter created, but employee access rows could not be created:",
+                    "Quarter created, but provider access rows could not be created:",
                     accessError
                 );
 
                 showError(
-                    "The quarter was created, but employee pick-access rows could not be created: "
+                    "The quarter was created, but provider pick-access rows could not be created: "
                     +
                     accessError.message
                 );
@@ -2580,7 +2580,7 @@ function renderWorkflowPanel() {
                     ? `
                         <span class="workflow-summary">
                             ${submittedCount} of ${activeProfiles.length}
-                            active employees submitted
+                            active people submitted
                         </span>
                       `
                     : ""
@@ -3000,7 +3000,7 @@ async function doQuarterSubmit(
     }
 
     /*
-     * Close + advance through the database function: employees
+     * Close + advance through the database function: providers
      * have no direct write permission on scheduling_period_access,
      * so the direct upserts below always failed RLS at submit.
      * The function verifies the caller, closes their row, and
@@ -3058,7 +3058,7 @@ async function doQuarterSubmit(
 
         /* Opening the next picker fires the existing
            quarter-access-moved notification trigger, so
-           employees and managers are notified. */
+           providers and managers are notified. */
         if (
             schedulingAccess[
                 nextPicker.id
@@ -3115,7 +3115,7 @@ async function submitQuarter() {
      * Gate on access for the quarter being submitted
      * (activeSchedulingPeriod), not the admin-selected quarter:
      * getQuarterAccessStatusForUser reads adminSchedulingAccess,
-     * which for an employee defaults to the current quarter, so
+     * which for a provider defaults to the current quarter, so
      * submitting any other quarter always reported locked.
      * schedulingAccess already holds every user's row for the
      * active period (same map the Quarter Access badge reads).
@@ -3538,7 +3538,7 @@ async function submitQuarter() {
             );
     }
 
-    /* The picking queue is active employees at the holder's
+    /* The picking queue is active providers at the holder's
        clinic, in the same order the Picking Status card
        shows: manual pick order when anyone has one, names
        otherwise. Managers and external workers do not pick. */
@@ -3560,7 +3560,7 @@ async function submitQuarter() {
                     if (
                         !profile.active ||
                         profile.role !==
-                            "employee" ||
+                            "provider" ||
                         profile.clinic_site !==
                             holderClinic ||
                         profile.id ===
@@ -3687,7 +3687,7 @@ async function submitQuarter() {
                     if (
                         !profile.active ||
                         profile.role !==
-                            "employee" ||
+                            "provider" ||
                         profile.clinic_site !==
                             holderClinic ||
                         profile.id ===
@@ -4170,8 +4170,8 @@ async function toggleWeekLock() {
     const confirmed =
         confirm(
             nextLocked
-                ? "Lock this Sunday–Saturday week? Employees will no longer be able to edit schedules, work sites, or comments."
-                : "Unlock this week and allow employees to edit again?"
+                ? "Lock this Sunday–Saturday week? Providers will no longer be able to edit schedules, work sites, or comments."
+                : "Unlock this week and allow providers to edit again?"
         );
 
     if (
