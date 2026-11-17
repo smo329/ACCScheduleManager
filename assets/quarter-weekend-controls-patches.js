@@ -103,7 +103,7 @@
     const turflandProfiles = profiles.filter(profile =>
       profile &&
       profile.active &&
-      profile.role === "employee" &&
+      profile.role === "provider" &&
       profile.clinic_site === "Turfland"
     );
 
@@ -133,7 +133,7 @@
     if (!turflandProfiles.length || !monthKeys.length) {
       const empty = document.createElement("div");
       empty.className = "quarter-weekend-manager-empty";
-      empty.textContent = "No active Turfland employees are available for this quarter.";
+      empty.textContent = "No active Turfland providers are available for this quarter.";
       section.appendChild(empty);
       dashboard.appendChild(section);
       return;
@@ -149,7 +149,7 @@
     const headerRow = document.createElement("tr");
 
     const employeeHeader = document.createElement("th");
-    employeeHeader.textContent = "Employee";
+    employeeHeader.textContent = "Provider";
     headerRow.appendChild(employeeHeader);
 
     monthKeys.forEach(monthKey => {
