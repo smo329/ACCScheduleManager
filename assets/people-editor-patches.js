@@ -3,8 +3,10 @@
   "use strict";
 
   const ROLE_OPTIONS = [
-    ["employee", "Employee"],
+    ["provider", "Provider"],
     ["manager", "Clinic Manager"],
+    ["staff", "Staff"],
+    ["medical_director", "Medical Director"],
     ["external", "External Shift Worker"],
     ["admin", "Administrator"]
   ];
@@ -50,6 +52,7 @@
             <div class="form-group"><label>Last Name</label><input id="editPersonLast" type="text"></div>
             <div class="form-group"><label>Role</label><select id="editPersonRole"></select></div>
             <div class="form-group" id="editPersonClinicGroup"><label>Primary Clinic</label><select id="editPersonClinic"><option value="Turfland">Turfland</option><option value="Fountain Court">Fountain Court</option></select></div>
+            <div class="form-group" style="grid-column:1 / -1"><label for="editPersonFloater" style="display:flex;align-items:center;gap:8px"><input id="editPersonFloater" type="checkbox" style="width:auto;margin:0"> Floats between clinics</label><div style="font-size:12px;color:#64748b;margin-top:4px">Picking access opens only when both the Turfland and Fountain Court queues are clear.</div></div>
           </div>
           <div style="font-size:12px;color:#64748b;margin-top:4px">External Shift Workers do not have a primary clinic and do not appear on the regular schedule.</div>
         </div>
@@ -94,10 +97,11 @@
     document.getElementById("editPersonFirst").value = profile.first_name || "";
     document.getElementById("editPersonLast").value = profile.last_name || "";
     const role = document.getElementById("editPersonRole");
-    role.value = profile.role || "employee";
+    role.value = profile.role || "provider";
     if (profile.id === currentUser?.id) role.disabled = true;
     else role.disabled = false;
     document.getElementById("editPersonClinic").value = profile.clinic_site === "Fountain Court" ? "Fountain Court" : "Turfland";
+    document.getElementById("editPersonFloater").checked = profile.is_floater === true;
     syncClinic();
     document.getElementById("personEditorModal").classList.add("show");
   };
@@ -110,6 +114,7 @@
     const roleEl = document.getElementById("editPersonRole");
     const role = editingProfile.id === currentUser?.id ? editingProfile.role : roleEl.value;
     const clinic = role === "external" ? null : document.getElementById("editPersonClinic").value;
+    const isFloater = document.getElementById("editPersonFloater").checked;
     if (!first || !last) return message("First and last name are required.");
     const btn = document.getElementById("personEditorSave");
     btn.disabled = true; btn.textContent = "Saving...";
@@ -122,6 +127,18 @@
       const p = profiles.find(x => x.id === editingProfile.id);
       if (p) { p.first_name=first; p.last_name=last; p.role=role; p.clinic_site=clinic; }
       if (editingProfile.id === currentUser?.id && currentProfile) { currentProfile.first_name=first; currentProfile.last_name=last; currentProfile.role=role; currentProfile.clinic_site=clinic; }
+      /* Floater flag: profiles.is_floater lands via a separate migration, so
+         save it in its own call and fail soft — a missing column (or a
+         missing admin UPDATE policy) only logs a warning and never breaks
+         the person save above. */
+      try {
+        const { error: floaterError } = await supabaseClient.from("profiles").update({ is_floater: isFloater }).eq("id", editingProfile.id);
+        if (floaterError) throw floaterError;
+        if (p) p.is_floater = isFloater;
+        if (editingProfile.id === currentUser?.id && currentProfile) currentProfile.is_floater = isFloater;
+      } catch (floaterErr) {
+        console.warn("Unable to save floater flag (profiles.is_floater may not exist yet):", floaterErr);
+      }
       message("Changes saved.", "success");
       if (typeof loadWeek === "function") await loadWeek();
       if (typeof renderPeopleList === "function") renderPeopleList();
