@@ -390,9 +390,22 @@ async function loadCurrentProfile() {
     }
 
     if (!data || !data.active) {
-        showError(
-            "Your account is not active."
-        );
+        const loginError =
+            document.getElementById(
+                "loginError"
+            );
+
+        if (loginError) {
+            loginError.textContent =
+                "Your account has been disabled. Please contact your administrator.";
+
+            loginError.style.display =
+                "block";
+        } else {
+            showError(
+                "Your account has been disabled. Please contact your administrator."
+            );
+        }
 
         return false;
     }
