@@ -977,6 +977,9 @@
         if (/row-level security|violates.*policy/i.test(raw)) {
             return "Full-week leave could not be saved. This schedule is not open for changes right now.";
         }
+        if (/locked holiday assignment/i.test(raw)) {
+            return "Full-week leave could not be saved because this week includes a locked holiday assignment. A locked holiday day can't be covered by full-week leave — trade the holiday from My Holidays, or ask an admin to change it.";
+        }
         return "Full-week leave could not be saved. Please try again.";
     }
 
@@ -1033,6 +1036,24 @@
 
         const dates = getWeekDates();
         const ordered = [...dates.slice(1), dates[0]];
+
+        // A locked holiday day can't be replaced by full-week leave.
+        // Check before writing anything, so the failure names the day
+        // instead of the generic save error.
+        if (typeof window.holidayLockedDaysFor === "function") {
+            const locked = await window.holidayLockedDaysFor(
+                currentUser.id,
+                ordered.map(date => getDateKey(date))
+            );
+            if (locked.length) {
+                const fmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const names = locked.map(d => `${fmt.format(new Date(d.dateKey + "T00:00:00"))} (${d.name})`).join(", ");
+                showFullWeekLeaveError(
+                    `Full-week leave could not be saved. This week includes your locked holiday assignment on ${names}. A locked holiday day can't be replaced by full-week leave — trade the holiday from My Holidays, or ask an admin to change it.`
+                );
+                return;
+            }
+        }
 
         const plans = ordered.map(date => ({
             dateKey: getDateKey(date),
