@@ -1009,6 +1009,22 @@ async function confirmCapacityFor12Shift(
     }
 
     /*
+     * The floater sites (Hamburg, Richmond, Georgetown) have no
+     * clinic capacity — a floater can always pick a shift there.
+     */
+    if (
+        [
+            "Hamburg",
+            "Richmond",
+            "Georgetown"
+        ].includes(
+            workSite
+        )
+    ) {
+        return true;
+    }
+
+    /*
      * Exclude this employee from the count so moving an
      * existing 12-hour shift between sites does not count
      * the same person twice.
@@ -1114,10 +1130,24 @@ function createWorkSiteSelect(
     select.className =
         "work-site-select";
 
-    [
+    const sites = [
         "Turfland",
         "Fountain Court"
-    ].forEach(
+    ];
+
+    // Floaters can also pick shifts at Hamburg, Richmond and Georgetown.
+    if (
+        profile &&
+        profile.is_floater === true
+    ) {
+        sites.push(
+            "Hamburg",
+            "Richmond",
+            "Georgetown"
+        );
+    }
+
+    sites.forEach(
         site => {
 
             const option =
@@ -1129,9 +1159,9 @@ function createWorkSiteSelect(
                 site;
 
             option.textContent =
-                site === "Turfland"
-                    ? "Turfland"
-                    : "Fountain Ct.";
+                site === "Fountain Court"
+                    ? "Fountain Ct."
+                    : site;
 
             if (
                 site ===
