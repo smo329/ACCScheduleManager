@@ -23,6 +23,7 @@ let currentUser = null;
 let currentProfile = null;
 
 let disabledContactUserId = null;
+let disabledContactEmail = "";
 
 let profiles = [];
 let scheduleData = {};
@@ -321,12 +322,28 @@ function showDisabledContactForm(
     disabledContactUserId =
         userId;
 
-    const section =
+    disabledContactEmail =
+        email || "";
+
+    const button =
         document.getElementById(
-            "disabledContactSection"
+            "disabledContactButton"
         );
 
-    if (!section) return;
+    if (button) {
+        button.style.display = "block";
+    }
+}
+
+
+function openDisabledContactModal() {
+
+    const modal =
+        document.getElementById(
+            "disabledContactModal"
+        );
+
+    if (!modal) return;
 
     const emailEl =
         document.getElementById(
@@ -334,7 +351,8 @@ function showDisabledContactForm(
         );
 
     if (emailEl) {
-        emailEl.value = email || "";
+        emailEl.value =
+            disabledContactEmail || "";
     }
 
     const msgEl =
@@ -355,8 +373,20 @@ function showDisabledContactForm(
         statusEl.textContent = "";
     }
 
-    section.style.display =
-        "block";
+    modal.classList.add("show");
+}
+
+
+function closeDisabledContactModal() {
+
+    const modal =
+        document.getElementById(
+            "disabledContactModal"
+        );
+
+    if (modal) {
+        modal.classList.remove("show");
+    }
 }
 
 
@@ -481,6 +511,11 @@ async function sendDisabledContactMessage() {
     if (msgEl) {
         msgEl.value = "";
     }
+
+    setTimeout(
+        closeDisabledContactModal,
+        1500
+    );
 }
 
 
