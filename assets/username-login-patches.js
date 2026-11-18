@@ -76,6 +76,9 @@
       );
 
       if (error || data?.error || !data?.access_token || !data?.refresh_token) {
+        if (data?.user_id && typeof showDisabledContactForm === "function") {
+          showDisabledContactForm(data.user_id, "");
+        }
         throw new Error(data?.error || "Invalid username or password.");
       }
 
