@@ -27,6 +27,12 @@
         return isAppleMobile || isIPadOS;
     }
 
+    function isMobileDevice() {
+        const ua = navigator.userAgent || "";
+        const isIPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+        return /Mobi|Android|iPhone|iPad|iPod/i.test(ua) || isIPadOS;
+    }
+
     function isStandaloneMode() {
         return (
             (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
@@ -363,6 +369,12 @@
             return;
         }
 
+        if (!isMobileDevice()) {
+            section.innerHTML = `
+                <p class="install-app-note">You are on a computer, not a phone or tablet — the install option is for mobile devices. Open the schedule on your phone and use the Mobile tab there to add it to your home screen.</p>`;
+            return;
+        }
+
         if (isIOSDevice()) {
             section.innerHTML = `
                 <p class="install-app-note">On iPhone, the app is added from Safari — there is no install button. Follow these steps:</p>
@@ -376,8 +388,8 @@
             return;
         }
 
-        // Android / desktop Chrome (and Edge): a real Install button when
-        // the browser has offered the prompt; otherwise manual steps.
+        // Android: a real Install button when the browser has offered
+        // the prompt; otherwise manual steps.
         const canInstall = Boolean(deferredInstallPrompt);
         section.innerHTML = `
             <p class="install-app-note">Save the schedule as an app on this device for one-tap access.</p>
