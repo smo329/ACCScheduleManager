@@ -68,6 +68,32 @@
         if (help) help.textContent = message;
     }
 
+    // Which toggles appear follows the in-app notifications each role
+    // actually receives, plus the leadership digests: schedule opens
+    // go to providers only, trades to admins/managers/medical
+    // directors/providers, the new-shifts digest to every role, and
+    // the sign-up digest to admins/managers/staff/medical directors.
+    // the schedule-changes digest to managers/staff/medical directors only.
+    // Hidden toggles stay in the DOM (unchecked)
+    // so saving still writes all columns.
+    // Runs on every ensure, not just at build: the section is cached
+    // for the page session, and sign-out does not reload the page, so
+    // a panel built under one role would otherwise keep that role's
+    // toggles after switching accounts in the same tab.
+    function applyNotificationRoleVisibility(section) {
+        const accountRole = (typeof currentProfile !== "undefined" && currentProfile) ? currentProfile.role : null;
+        const scheduleOpenRow = section.querySelector("#employeeEmailScheduleOpenRow");
+        const tradesRow = section.querySelector("#employeeEmailTradesRow");
+        const digestRow = section.querySelector("#employeeEmailDigestRow");
+        const claimDigestRow = section.querySelector("#employeeEmailClaimDigestRow");
+        const scheduleChangeDigestRow = section.querySelector("#employeeEmailScheduleChangeDigestRow");
+        if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "provider" ? "flex" : "none";
+        if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "medical_director" || accountRole === "provider") ? "flex" : "none";
+        if (digestRow) digestRow.style.display = "flex";
+        if (claimDigestRow) claimDigestRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
+        if (scheduleChangeDigestRow) scheduleChangeDigestRow.style.display = (accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
+    }
+
     function ensureEmployeeEmailUi() {
         if (!isOwnAccount()) return null;
         if (typeof supabaseClient === "undefined") return null;
@@ -88,7 +114,10 @@
         });
 
         let section = document.getElementById("employeeEmailNotificationSettings");
-        if (section) return section;
+        if (section) {
+            applyNotificationRoleVisibility(section);
+            return section;
+        }
 
         section = document.createElement("div");
         section.id = "employeeEmailNotificationSettings";
@@ -136,25 +165,7 @@
             '<div id="employeeEmailHelp" class="account-settings-help"></div>';
         panel.appendChild(section);
 
-        // Which toggles appear follows the in-app notifications each role
-        // actually receives, plus the leadership digests: schedule opens
-        // go to providers only, trades to admins/managers/medical
-        // directors/providers, the new-shifts digest to every role, and
-        // the sign-up digest to admins/managers/staff/medical directors.
-        // the schedule-changes digest to managers/staff/medical directors only.
-        // Hidden toggles stay in the DOM (unchecked)
-        // so saving still writes all columns.
-        const accountRole = (typeof currentProfile !== "undefined" && currentProfile) ? currentProfile.role : null;
-        const scheduleOpenRow = section.querySelector("#employeeEmailScheduleOpenRow");
-        const tradesRow = section.querySelector("#employeeEmailTradesRow");
-        const digestRow = section.querySelector("#employeeEmailDigestRow");
-        const claimDigestRow = section.querySelector("#employeeEmailClaimDigestRow");
-        const scheduleChangeDigestRow = section.querySelector("#employeeEmailScheduleChangeDigestRow");
-        if (scheduleOpenRow) scheduleOpenRow.style.display = accountRole === "provider" ? "flex" : "none";
-        if (tradesRow) tradesRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "medical_director" || accountRole === "provider") ? "flex" : "none";
-        if (digestRow) digestRow.style.display = "flex";
-        if (claimDigestRow) claimDigestRow.style.display = (accountRole === "admin" || accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
-        if (scheduleChangeDigestRow) scheduleChangeDigestRow.style.display = (accountRole === "manager" || accountRole === "staff" || accountRole === "medical_director") ? "flex" : "none";
+        applyNotificationRoleVisibility(section);
 
         section.querySelector("#saveEmployeeEmailButton").onclick = saveEmployeeEmailPrefs;
         section.querySelector("#employeeEmailSendCodeButton").onclick = sendVerificationCode;
