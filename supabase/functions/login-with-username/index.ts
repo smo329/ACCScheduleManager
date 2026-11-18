@@ -71,8 +71,12 @@ Deno.serve(async (req) => {
     .eq("username", username)
     .maybeSingle();
 
-  if (profileError || !profile || !profile.active) {
+  if (profileError || !profile) {
     return json({ error: "Invalid username or password." }, 401);
+  }
+
+  if (!profile.active) {
+    return json({ error: "Your account has been disabled. Please contact your administrator.", user_id: profile.id }, 401);
   }
 
 
