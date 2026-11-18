@@ -22,6 +22,8 @@ const supabaseClient =
 let currentUser = null;
 let currentProfile = null;
 
+let disabledContactUserId = null;
+
 let profiles = [];
 let scheduleData = {};
 let comments = {};
@@ -311,6 +313,177 @@ function showLogin() {
 }
 
 
+function showDisabledContactForm(
+    userId,
+    email
+) {
+
+    disabledContactUserId =
+        userId;
+
+    const section =
+        document.getElementById(
+            "disabledContactSection"
+        );
+
+    if (!section) return;
+
+    const emailEl =
+        document.getElementById(
+            "disabledContactEmail"
+        );
+
+    if (emailEl) {
+        emailEl.value = email || "";
+    }
+
+    const msgEl =
+        document.getElementById(
+            "disabledContactMessage"
+        );
+
+    if (msgEl) {
+        msgEl.value = "";
+    }
+
+    const statusEl =
+        document.getElementById(
+            "disabledContactStatus"
+        );
+
+    if (statusEl) {
+        statusEl.textContent = "";
+    }
+
+    section.style.display =
+        "block";
+}
+
+
+async function sendDisabledContactMessage() {
+
+    const statusEl =
+        document.getElementById(
+            "disabledContactStatus"
+        );
+
+    const emailEl =
+        document.getElementById(
+            "disabledContactEmail"
+        );
+
+    const msgEl =
+        document.getElementById(
+            "disabledContactMessage"
+        );
+
+    const sendBtn =
+        document.getElementById(
+            "disabledContactSend"
+        );
+
+    const email =
+        (emailEl ? emailEl.value : "")
+            .trim();
+
+    const message =
+        (msgEl ? msgEl.value : "")
+            .trim();
+
+    if (!disabledContactUserId) {
+        if (statusEl) {
+            statusEl.textContent =
+                "Unable to send right now. Please try signing in again.";
+        }
+
+        return;
+    }
+
+    if (
+        !email ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+        if (statusEl) {
+            statusEl.textContent =
+                "Please enter a valid email address.";
+        }
+
+        return;
+    }
+
+    if (!message) {
+        if (statusEl) {
+            statusEl.textContent =
+                "Please write a message first.";
+        }
+
+        return;
+    }
+
+    if (message.length > 2000) {
+        if (statusEl) {
+            statusEl.textContent =
+                "Your message is too long (2000 characters max).";
+        }
+
+        return;
+    }
+
+    if (sendBtn) {
+        sendBtn.disabled = true;
+    }
+
+    if (statusEl) {
+        statusEl.textContent = "Sending…";
+    }
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .functions
+            .invoke(
+                "contact-admins",
+                {
+                    body: {
+                        user_id:
+                            disabledContactUserId,
+                        email,
+                        message
+                    }
+                }
+            );
+
+    if (sendBtn) {
+        sendBtn.disabled = false;
+    }
+
+    if (error || data?.error) {
+        if (statusEl) {
+            statusEl.textContent =
+                "Could not send: " +
+                (
+                    data?.error ||
+                    error?.message ||
+                    "unknown error"
+                );
+        }
+
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.textContent =
+            "✓ Your message has been sent to the admins.";
+    }
+
+    if (msgEl) {
+        msgEl.value = "";
+    }
+}
+
+
 function showApp() {
 
     document
@@ -406,6 +579,11 @@ async function loadCurrentProfile() {
                 "Your account has been disabled. Please contact your administrator."
             );
         }
+
+        showDisabledContactForm(
+            currentUser.id,
+            currentUser.email || ""
+        );
 
         return false;
     }
