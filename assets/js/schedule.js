@@ -666,6 +666,24 @@ function createWeeklyEmployeeRow(
                 indicator.title =
                     comment;
 
+                indicator.style.cursor =
+                    "pointer";
+
+                indicator.onclick =
+                    function(event) {
+
+                        event.stopPropagation();
+
+                        openCommentModal(
+                            profile.id,
+                            getProfileName(
+                                profile
+                            ),
+                            dateKey,
+                            true
+                        );
+                    };
+
                 cell.appendChild(
                     indicator
                 );
@@ -2030,7 +2048,8 @@ function makeCommentKey(
 function openCommentModal(
     userId,
     name,
-    dateKey
+    dateKey,
+    readOnly
 ) {
 
     activeCommentUserId =
@@ -2046,11 +2065,12 @@ function openCommentModal(
         .textContent =
             `Comment — ${name} — ${dateKey}`;
 
-    document
-        .getElementById(
+    const textEl =
+        document.getElementById(
             "commentText"
-        )
-        .value =
+        );
+
+    textEl.value =
             comments[
                 makeCommentKey(
                     userId,
@@ -2060,6 +2080,19 @@ function openCommentModal(
             ||
             "";
 
+    textEl.readOnly =
+        Boolean(readOnly);
+
+    const saveBtn =
+        document.querySelector(
+            "#commentModal .modal-footer .save-button"
+        );
+
+    if (saveBtn) {
+        saveBtn.style.display =
+            readOnly ? "none" : "";
+    }
+
     document
         .getElementById(
             "commentModal"
@@ -2068,11 +2101,9 @@ function openCommentModal(
             "show"
         );
 
-    document
-        .getElementById(
-            "commentText"
-        )
-        .focus();
+    if (!readOnly) {
+        textEl.focus();
+    }
 }
 
 
@@ -2085,6 +2116,24 @@ function closeCommentModal() {
         .classList.remove(
             "show"
         );
+
+    const textEl =
+        document.getElementById(
+            "commentText"
+        );
+
+    if (textEl) {
+        textEl.readOnly = false;
+    }
+
+    const saveBtn =
+        document.querySelector(
+            "#commentModal .modal-footer .save-button"
+        );
+
+    if (saveBtn) {
+        saveBtn.style.display = "";
+    }
 
     activeCommentUserId =
         null;
