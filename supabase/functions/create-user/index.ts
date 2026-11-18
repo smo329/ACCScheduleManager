@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     if (!email || !password || !first_name || !last_name) return json({ error: "Email, password, first name, and last name are required." }, 400);
 
     const requestedRole = String(role || "").trim().toLowerCase();
-    const normalizedRole = ["employee", "manager", "admin", "external"].includes(requestedRole) ? requestedRole : "employee";
+    const normalizedRole = ["provider", "manager", "staff", "medical_director", "admin", "external"].includes(requestedRole) ? requestedRole : "provider";
     const normalizedClinic = clinic_site === "Turfland" || clinic_site === "Fountain Court" ? clinic_site : null;
     if (normalizedRole !== "external" && !normalizedClinic) return json({ error: "A valid clinic site is required." }, 400);
 
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       return json({ error: insertError.message }, 400);
     }
 
-    if (normalizedRole === "employee") {
+    if (normalizedRole === "provider") {
       const { error: employmentError } = await adminClient.from("employment_periods").insert({ user_id: newUserData.user.id, start_date: startDate, end_date: null });
       if (employmentError) {
         await adminClient.from("profiles").delete().eq("id", newUserData.user.id);
