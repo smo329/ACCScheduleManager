@@ -1078,7 +1078,8 @@ async function renderQuarterDashboard() {
         profiles.filter(
             profile =>
                 profile.active &&
-                profile.role !== "admin"
+                profile.role !== "admin" &&
+                !["manager", "staff", "medical_director"].includes(profile.role)
         );
 
     const monthKeys =
