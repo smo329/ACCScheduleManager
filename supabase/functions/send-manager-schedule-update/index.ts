@@ -97,10 +97,10 @@ Deno.serve(async (req) => {
     callerProfileError ||
     !callerProfile ||
     !callerProfile.active ||
-    !["employee", "admin"].includes(callerProfile.role)
+    !["provider", "admin"].includes(callerProfile.role)
   ) {
     return json({
-      error: "Only active employees or administrators can report schedule updates.",
+      error: "Only active providers or administrators can report schedule updates.",
     }, 403);
   }
 
@@ -134,12 +134,12 @@ Deno.serve(async (req) => {
   ]);
 
   if (employeeResult.error || !employeeResult.data) {
-    return json({ error: employeeResult.error?.message || "Employee profile not found." }, 404);
+    return json({ error: employeeResult.error?.message || "Provider profile not found." }, 404);
   }
 
   const employee = employeeResult.data;
-  if (employee.role !== "employee" || !employee.active) {
-    return json({ sent: 0, skipped: true, reason: "The changed profile is not an active employee." });
+  if (employee.role !== "provider" || !employee.active) {
+    return json({ sent: 0, skipped: true, reason: "The changed profile is not an active provider." });
   }
 
   const clinicSite =
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
   const weekStart = dateKey(getSunday(scheduleDate));
   const cooldownSince = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-  const employeeName = [employee.first_name, employee.last_name].filter(Boolean).join(" ").trim() || "An employee";
+  const employeeName = [employee.first_name, employee.last_name].filter(Boolean).join(" ").trim() || "A provider";
 
   let sent = 0;
   let cooldownSkipped = 0;
