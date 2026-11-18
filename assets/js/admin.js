@@ -485,6 +485,13 @@ function closeAddEmployeeSection() {
 
 function renderPeopleList() {
 
+    // Capture the full list before the dashboard call: the Quarter
+    // Dashboard temporarily filters the shared profiles list (hiding
+    // manager/staff/medical_director) and, because it is async, the
+    // filter is still active when this function reads profiles below.
+    // Without the capture, Manage People would omit those roles.
+    const allProfiles = profiles;
+
     renderQuarterDashboard();
 
     const container =
@@ -495,7 +502,7 @@ function renderPeopleList() {
     container.innerHTML = "";
 
     if (
-        profiles.length === 0
+        allProfiles.length === 0
     ) {
 
         container.innerHTML =
@@ -504,7 +511,7 @@ function renderPeopleList() {
         return;
     }
 
-    profiles.forEach(
+    allProfiles.forEach(
         profile => {
 
             const row =
