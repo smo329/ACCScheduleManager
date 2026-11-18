@@ -346,6 +346,10 @@
             content.scrollTop =
                 0;
         }
+
+        if (tabName === "mobile") {
+            renderInstallAppSection();
+        }
     }
 
 
@@ -840,8 +844,6 @@
             mobile
         );
 
-        renderInstallAppSection();
-
         Array.from(
             body.children
         ).forEach(
@@ -880,6 +882,8 @@
         body.appendChild(
             shell
         );
+
+        renderInstallAppSection();
 
         showAccountSettingsTab(
             "general"
@@ -1243,9 +1247,13 @@
 
             @media (max-width:700px) {
                 #accountModal .account-settings-modal {
-                    width:calc(100vw - 16px);
-                    height:calc(100vh - 16px);
-                    max-height:calc(100vh - 16px);
+                    width:100%;
+                    max-width:none;
+                    height:100vh;
+                    height:100dvh;
+                    max-height:100vh;
+                    max-height:100dvh;
+                    border-radius:0;
                 }
 
                 .account-settings-shell {
