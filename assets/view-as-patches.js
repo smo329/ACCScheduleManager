@@ -74,6 +74,9 @@
             .view-as-person:hover{background:#f8fafc}
             .view-as-person strong{display:block;color:#17365d}
             .view-as-person span{color:#64748b;font-size:12px}
+            .view-as-search{width:100%;box-sizing:border-box;padding:9px 11px;margin:2px 0 4px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#17365d;background:#fff}
+            .view-as-search:focus{outline:2px solid #2563eb;outline-offset:1px;border-color:#2563eb}
+            .view-as-empty{color:#64748b;font-size:13px;padding:8px 2px;margin:0}
             .view-as-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
             .view-as-notice{padding:10px 12px;border-radius:8px;background:#fffbeb;border:1px solid #f59e0b;color:#92400e;font-size:13px;line-height:1.5}
         `;
@@ -205,24 +208,42 @@
             { id: "generic-external", first_name: "Generic", last_name: "External Worker", role: "external", clinic_site: null, active: true }
         ];
 
-        const personRows = people.length
-            ? people.map(p => `<button class="view-as-person" type="button" data-person="${esc(p.id)}"><strong>${esc(displayName(p))}</strong><span>${esc(roleLabel(p.role))}${p.clinic_site ? ` · ${esc(p.clinic_site)}` : ""}</span></button>`).join("")
-            : `<p style="color:#64748b">No other active people to view as.</p>`;
+        const personRowHtml = p => `<button class="view-as-person" type="button" data-person="${esc(p.id)}"><strong>${esc(displayName(p))}</strong><span>${esc(roleLabel(p.role))}${p.clinic_site ? ` · ${esc(p.clinic_site)}` : ""}</span></button>`;
+
+        function renderPeople(query) {
+            const list = overlay.querySelector("#viewAsPeopleList");
+            if (!list) return;
+            if (!people.length) {
+                list.innerHTML = `<p style="color:#64748b">No other active people to view as.</p>`;
+                return;
+            }
+            const q = (query || "").trim().toLowerCase();
+            const matches = !q ? people : people.filter(p => {
+                const hay = [displayName(p), roleLabel(p.role), p.clinic_site || ""].join(" ").toLowerCase();
+                return hay.includes(q);
+            });
+            list.innerHTML = matches.length
+                ? matches.map(personRowHtml).join("")
+                : `<p class="view-as-empty">No people match "${esc(query || "")}".</p>`;
+        }
 
         const genericRows = generic.map(p => `<button class="view-as-person" type="button" data-generic="${esc(p.role)}"><strong>${esc(displayName(p))}</strong><span>${esc(roleLabel(p.role))} · Generic role</span></button>`).join("");
 
         overlay.querySelector("#viewAsBody").innerHTML = `
             <p>Pick who you would like to act as. This is read-only: nothing you click in that view can be saved as them.</p>
-            <div class="view-as-section">People</div>${personRows}
+            <input id="viewAsSearch" class="view-as-search" type="search" placeholder="Search people by name, role or clinic…" autocomplete="off">
+            <div class="view-as-section">People</div><div id="viewAsPeopleList"></div>
             <div class="view-as-section">Generic roles</div>${genericRows}`;
 
-        overlay.querySelectorAll("[data-person]").forEach(button => {
-            button.onclick = () => {
-                const person = people.find(p => String(p.id) === button.dataset.person);
-                if (!person) return;
-                overlay.classList.remove("show");
-                enterViewAs(person);
-            };
+        renderPeople("");
+        overlay.querySelector("#viewAsSearch").oninput = e => renderPeople(e.target.value);
+        overlay.querySelector("#viewAsPeopleList").addEventListener("click", e => {
+            const button = e.target && e.target.closest ? e.target.closest("[data-person]") : null;
+            if (!button) return;
+            const person = people.find(p => String(p.id) === button.dataset.person);
+            if (!person) return;
+            overlay.classList.remove("show");
+            enterViewAs(person);
         });
         overlay.querySelectorAll("[data-generic]").forEach(button => {
             button.onclick = () => {
