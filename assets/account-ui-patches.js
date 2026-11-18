@@ -9,6 +9,31 @@
     const THEME_KEY = "acc_schedule_theme";
     const THEME_KEY_PREFIX = "acc_schedule_theme:";
 
+    // Install-as-app: capture the browser's install prompt so the Mobile
+    // tab can offer a one-tap Install button on Android/Chrome. iOS
+    // Safari never fires this event — iPhones get manual instructions.
+    let deferredInstallPrompt = null;
+
+    window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        renderInstallAppSection();
+    });
+
+    function isIOSDevice() {
+        const ua = navigator.userAgent || "";
+        const isAppleMobile = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+        const isIPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+        return isAppleMobile || isIPadOS;
+    }
+
+    function isStandaloneMode() {
+        return (
+            (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+            window.navigator.standalone === true
+        );
+    }
+
     function themeKeyForUser() {
         const user =
             typeof currentUser !== "undefined" ? currentUser : null;
@@ -324,6 +349,52 @@
     }
 
 
+    function renderInstallAppSection() {
+        const section = document.getElementById("installAppSection");
+        if (!section) return;
+
+        if (isStandaloneMode()) {
+            section.innerHTML = `
+                <p class="install-app-note">This device already has the schedule installed as an app.</p>`;
+            return;
+        }
+
+        if (isIOSDevice()) {
+            section.innerHTML = `
+                <p class="install-app-note">On iPhone, the app is added from Safari — there is no install button. Follow these steps:</p>
+                <ol class="install-app-steps">
+                    <li>Open this site in <strong>Safari</strong>.</li>
+                    <li>Tap <strong>Share</strong>.</li>
+                    <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+                    <li>Tap <strong>Add</strong>.</li>
+                </ol>
+                <p class="install-app-note">You will sign in once more inside the installed app, because it keeps its own sign-in separate from Safari.</p>`;
+            return;
+        }
+
+        // Android / desktop Chrome (and Edge): a real Install button when
+        // the browser has offered the prompt; otherwise manual steps.
+        const canInstall = Boolean(deferredInstallPrompt);
+        section.innerHTML = `
+            <p class="install-app-note">Save the schedule as an app on this device for one-tap access.</p>
+            <button id="installAppButton" class="modal-button save-button" type="button" ${canInstall ? "" : "disabled"}>Install app</button>
+            ${canInstall ? "" : `<p class="install-app-note">The Install button appears once the browser offers it (usually after you have used the site a little). You can also install it now from your browser menu: open the menu and choose “Install app” or “Add to Home screen”.</p>`}
+            <p class="install-app-note">You will sign in once more inside the installed app.</p>`;
+        const button = section.querySelector("#installAppButton");
+        if (button && canInstall) {
+            button.onclick = async () => {
+                const promptEvent = deferredInstallPrompt;
+                deferredInstallPrompt = null;
+                try {
+                    await promptEvent.prompt();
+                    await promptEvent.userChoice;
+                } catch (_) {}
+                renderInstallAppSection();
+            };
+        }
+    }
+
+
     function createAppearanceCard() {
         const card =
             document.createElement(
@@ -516,6 +587,11 @@
                 "account",
                 "Account Settings",
                 "Email, username, password and security"
+            ],
+            [
+                "mobile",
+                "Mobile",
+                "Install as an app"
             ]
         ].forEach(
             (
@@ -737,6 +813,35 @@
             account
         );
 
+        const mobile = document.createElement(
+            "section"
+        );
+
+        mobile.className =
+            "account-settings-tab";
+
+        mobile.dataset.tab =
+            "mobile";
+
+        mobile.innerHTML =
+            `
+            <div class="account-settings-section-title">
+                Mobile
+            </div>
+
+            <div class="account-settings-section-subtitle">
+                Save the schedule as an app on your phone.
+            </div>
+
+            <div id="installAppSection"></div>
+            `;
+
+        content.appendChild(
+            mobile
+        );
+
+        renderInstallAppSection();
+
         Array.from(
             body.children
         ).forEach(
@@ -924,6 +1029,30 @@
                 color:#64748b;
                 font-size:13px;
                 margin-bottom:22px;
+            }
+
+            .install-app-note {
+                color:#475569;
+                font-size:13px;
+                line-height:1.55;
+                margin:0 0 12px;
+            }
+
+            .install-app-steps {
+                color:#334155;
+                font-size:13px;
+                line-height:1.6;
+                margin:0 0 12px;
+                padding-left:20px;
+            }
+
+            .install-app-steps li {
+                margin-bottom:4px;
+            }
+
+            #installAppSection .modal-button[disabled] {
+                opacity:.5;
+                cursor:default;
             }
 
             .account-settings-subheading {
