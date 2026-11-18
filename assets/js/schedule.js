@@ -2093,6 +2093,52 @@ function openCommentModal(
             readOnly ? "none" : "";
     }
 
+    const cancelBtn =
+        document.querySelector(
+            "#commentModal .modal-footer .cancel-button"
+        );
+
+    if (cancelBtn) {
+        cancelBtn.textContent =
+            readOnly ? "Close" : "Cancel";
+    }
+
+    const existingNote =
+        document.getElementById(
+            "commentReadOnlyNote"
+        );
+
+    if (existingNote) {
+        existingNote.remove();
+    }
+
+    if (readOnly) {
+        const modalBody =
+            document.querySelector(
+                "#commentModal .modal-body"
+            );
+
+        if (modalBody) {
+            const note =
+                document.createElement("p");
+
+            note.id =
+                "commentReadOnlyNote";
+
+            note.textContent =
+                "Read-only — you can view this comment but can't change it.";
+
+            note.style.color = "#64748b";
+            note.style.fontSize = "13px";
+            note.style.margin = "0 0 8px";
+
+            modalBody.insertBefore(
+                note,
+                textEl
+            );
+        }
+    }
+
     document
         .getElementById(
             "commentModal"
@@ -2133,6 +2179,24 @@ function closeCommentModal() {
 
     if (saveBtn) {
         saveBtn.style.display = "";
+    }
+
+    const cancelBtn =
+        document.querySelector(
+            "#commentModal .modal-footer .cancel-button"
+        );
+
+    if (cancelBtn) {
+        cancelBtn.textContent = "Cancel";
+    }
+
+    const existingNote =
+        document.getElementById(
+            "commentReadOnlyNote"
+        );
+
+    if (existingNote) {
+        existingNote.remove();
     }
 
     activeCommentUserId =
