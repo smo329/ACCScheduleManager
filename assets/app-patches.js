@@ -844,9 +844,9 @@
 
     function compactTablesAndAddBadges() {
         [
-            ["turflandHeader", "turflandBody", "Turfland"],
-            ["fountainHeader", "fountainBody", "Fountain Court"]
-        ].forEach(([headerId, bodyId, clinic]) => {
+            ["turflandHeader", "turflandBody"],
+            ["fountainHeader", "fountainBody"]
+        ].forEach(([headerId, bodyId]) => {
             const headerRow = document.querySelector(`#${headerId} tr`);
             const body = document.getElementById(bodyId);
 
@@ -867,13 +867,19 @@
                 });
             }
 
-            const clinicProfiles = profiles.filter(
-                p => p.active && p.clinic_site === clinic
-            );
-
-            clinicProfiles.forEach((profile, rowIndex) => {
-                const row = body.rows[rowIndex];
-                if (!row) return;
+            // Resolve each row's person from its name cell, not by row
+            // position. The row order and the profiles list order can
+            // drift apart (a hidden or skipped row shifts every index
+            // after it), which painted one provider's leave on the
+            // next row down. The holiday lock uses this same pattern.
+            // Rows without a name cell (capacity, availability, empty)
+            // are skipped.
+            Array.from(body.rows).forEach(row => {
+                const nameCell = row.querySelector(".employee-name");
+                if (!nameCell) return;
+                const label = nameCell.textContent.trim();
+                const profile = (profiles || []).find(p => getProfileName(p).trim() === label);
+                if (!profile) return;
 
                 getWeekDates().forEach((date, dayIndex) => {
                     const cell = row.cells[dayIndex + 1];
