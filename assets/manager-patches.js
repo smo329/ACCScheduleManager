@@ -593,38 +593,13 @@
             };
     }
 
-    if (
-        typeof renderQuarterDashboard ===
-        "function"
-    ) {
-        const originalRenderQuarterDashboard =
-            renderQuarterDashboard;
+    // NOTE: the Quarter Dashboard used to hide manager/staff/
+    // medical_director by temporarily replacing the shared profiles
+    // list while it rendered. That leaked into Manage People (which
+    // reads the same list) and hid those roles there. The dashboard
+    // now filters them itself (workflow.js activeProfiles), so the
+    // shared list is never mutated.
 
-        renderQuarterDashboard =
-            async function (...args) {
-                const originalProfiles =
-                    profiles;
-
-                try {
-                    profiles =
-                        originalProfiles.filter(
-                            profile =>
-                                profile &&
-                                !["manager", "staff", "medical_director"].includes(profile.role)
-                        );
-
-                    return await originalRenderQuarterDashboard
-                        .apply(
-                            this,
-                            args
-                        );
-
-                } finally {
-                    profiles =
-                        originalProfiles;
-                }
-            };
-    }
 
     function ensureManagerNotificationUi() {
         if (
