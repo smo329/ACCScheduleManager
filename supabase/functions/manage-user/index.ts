@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       const firstName = String(body.first_name || "").trim();
       const lastName = String(body.last_name || "").trim();
       const requestedRole = String(body.role || "").trim().toLowerCase();
-      const role = ["employee", "manager", "admin", "external"].includes(requestedRole) ? requestedRole : "employee";
+      const role = ["provider", "manager", "staff", "medical_director", "admin", "external"].includes(requestedRole) ? requestedRole : "provider";
       const clinicSite = body.clinic_site === "Fountain Court" ? "Fountain Court" : body.clinic_site === "Turfland" ? "Turfland" : null;
 
       if (!firstName || !lastName) return json({ error: "First name and last name are required." }, 400);
@@ -55,13 +55,13 @@ Deno.serve(async (req) => {
       }).eq("id", user_id);
       if (error) return json({ error: error.message }, 400);
 
-      if (oldProfile?.role !== "employee" && role === "employee") {
+      if (oldProfile?.role !== "provider" && role === "provider") {
         const startDate = validDate(body.employment_start_date) ? body.employment_start_date : new Date().toISOString().slice(0, 10);
         const { error: periodError } = await adminClient.from("employment_periods").insert({ user_id, start_date: startDate, end_date: null });
         if (periodError && !periodError.message.includes("duplicate")) return json({ error: periodError.message }, 400);
       }
 
-      if (oldProfile?.role === "employee" && role !== "employee") {
+      if (oldProfile?.role === "provider" && role !== "provider") {
         const endDate = validDate(body.employment_end_date) ? body.employment_end_date : new Date().toISOString().slice(0, 10);
         await adminClient.from("employment_periods").update({ end_date: endDate, updated_at: new Date().toISOString() }).eq("user_id", user_id).is("end_date", null);
       }
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       const { data: profile } = await adminClient.from("profiles").select("role").eq("id", user_id).single();
       const { error } = await adminClient.from("profiles").update({ active: true, updated_at: new Date().toISOString() }).eq("id", user_id);
       if (error) return json({ error: error.message }, 400);
-      if (profile?.role === "employee") {
+      if (profile?.role === "provider") {
         const startDate = validDate(body.employment_start_date) ? body.employment_start_date : new Date().toISOString().slice(0, 10);
         const { data: openPeriod } = await adminClient.from("employment_periods").select("id").eq("user_id", user_id).is("end_date", null).maybeSingle();
         if (!openPeriod) {
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     if (action === "deactivate") {
       const endDate = validDate(body.employment_end_date) ? body.employment_end_date : new Date().toISOString().slice(0, 10);
       const { data: profile } = await adminClient.from("profiles").select("role").eq("id", user_id).single();
-      if (profile?.role === "employee") {
+      if (profile?.role === "provider") {
         const { data: openPeriod } = await adminClient.from("employment_periods").select("id, start_date").eq("user_id", user_id).is("end_date", null).maybeSingle();
         if (openPeriod && endDate < openPeriod.start_date) return json({ error: "Employment end date cannot be before the start date." }, 400);
         if (openPeriod) {
