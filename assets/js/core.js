@@ -370,7 +370,8 @@ async function loadCurrentProfile() {
                 last_name,
                 role,
                 active,
-                clinic_site
+                clinic_site,
+                is_floater
             `)
             .eq(
                 "id",
@@ -688,7 +689,8 @@ async function loadWeek() {
                     last_name,
                     role,
                     active,
-                    clinic_site
+                    clinic_site,
+                    is_floater
                 `)
                 .order("last_name")
                 .order("first_name"),
