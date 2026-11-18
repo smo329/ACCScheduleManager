@@ -260,10 +260,22 @@
                     var note = pre.isOfficial ? "Holiday · 8 + leave" : "Holiday · 12";
                     cell.classList.remove("editable");
                     cell.classList.add("locked", "holiday-locked");
+                    cell.classList.remove("holiday-locked-clickable");
+                    cell.onclick = null;
                     cell.title = pre.name + " (assigned holiday)";
                     cell.innerHTML = '<span class="schedule-admin-value">' + esc(code) + '</span>'
                         + '<span class="shift-site-display schedule-admin-label">' + esc(note) + '</span>'
                         + '<span class="shift-site-display">' + esc(pre.name) + '</span>';
+                    // The viewer's own locked holiday day is clickable:
+                    // it opens a popup pointing at My Holidays, where a
+                    // trade can be proposed. Other providers' locked
+                    // days stay inert (their schedules are read-only).
+                    if (isTurflandEmployee() && currentProfile && person.id === currentProfile.id) {
+                        cell.classList.add("holiday-locked-clickable");
+                        cell.onclick = (function (p, dk) {
+                            return function () { openLockedHolidayPopup(p, dk); };
+                        })(pre, dates[i]);
+                    }
                 }
             });
         });
@@ -319,6 +331,7 @@
         var s = document.createElement("style");
         s.id = "holidayStyles";
         s.textContent = ".holiday-locked{background:#fff7d6!important}"
+            + ".holiday-locked-clickable{cursor:pointer}"
             + ".holiday-tabs{display:flex;gap:8px;margin-bottom:14px}"
             + ".holiday-tab{border:1px solid #cad7e7;background:#fff;color:#17365d;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600}"
             + ".holiday-tab.active{background:#17365d;color:#fff}"
@@ -458,6 +471,61 @@
 
     window.openHolidayModal = openHolidayModal;
     window.closeHolidayModal = closeHolidayModal;
+
+    /* Locked-holiday popup: tapping your own locked holiday day
+       explains the lock and points at My Holidays, where a trade can
+       be proposed. Only the viewer's own days are clickable. */
+    var lockedHolidayDateKey = null;
+
+    function formatHolidayDate(dateKey) {
+        try {
+            var d = new Date(dateKey + "T00:00:00");
+            return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+        } catch (_) { return dateKey; }
+    }
+
+    function openLockedHolidayPopup(pre, dateKey) {
+        lockedHolidayDateKey = dateKey;
+        var overlay = document.getElementById("holidayLockedPopup");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "holidayLockedPopup";
+            overlay.className = "modal-overlay";
+            overlay.innerHTML = '<div class="modal"><div class="modal-header"><div class="modal-title" id="holidayLockedTitle">Holiday</div><button class="modal-close" type="button" aria-label="Close">×</button></div><div class="modal-body"><p id="holidayLockedText" style="color:#475569;font-size:14px;margin:0;line-height:1.5;"></p></div><div class="modal-footer"><button class="modal-button cancel-button" type="button" id="holidayLockedCancel">Cancel</button><button class="modal-button save-button" type="button" id="holidayLockedView">View My Holidays</button></div></div>';
+            overlay.querySelector(".modal-close").onclick = closeLockedHolidayPopup;
+            overlay.querySelector("#holidayLockedCancel").onclick = closeLockedHolidayPopup;
+            overlay.querySelector("#holidayLockedView").onclick = function () {
+                var yr = Number((lockedHolidayDateKey || "").slice(0, 4));
+                if (yr) modalYear = yr;
+                closeLockedHolidayPopup();
+                openHolidayModal();
+                var ys = document.getElementById("holidayYearSelect");
+                if (ys && yr) ys.value = String(yr);
+            };
+            document.body.appendChild(overlay);
+        }
+        var when = formatHolidayDate(dateKey);
+        var hours = pre.isOfficial ? "8 hours + 4 leave" : "12-hour shift";
+        document.getElementById("holidayLockedTitle").textContent = pre.name;
+        document.getElementById("holidayLockedText").textContent = when + " · Assigned holiday — " + hours + ". This day is locked because it is your assigned holiday. To change it, trade it with another provider from My Holidays.";
+        overlay.classList.add("show");
+    }
+
+    function closeLockedHolidayPopup() {
+        var overlay = document.getElementById("holidayLockedPopup");
+        if (overlay) overlay.classList.remove("show");
+    }
+
+    /* Locked holiday days for a user across a set of dates, for the
+       full-week leave pre-check in app-patches.js. Loads the holiday
+       data first if needed, then returns the prefills found. */
+    window.holidayLockedDaysFor = async function (userId, dateKeys) {
+        if (!dataLoaded) await loadHolidayData();
+        return (dateKeys || []).map(function (dk) {
+            var pre = prefillFor(userId, dk);
+            return pre ? { dateKey: dk, name: pre.name, isOfficial: pre.isOfficial } : null;
+        }).filter(function (x) { return !!x; });
+    };
 
     function groupReferenceHtml() {
         var rows = [1, 2, 3, 4, 5, 6].map(function (g) {
