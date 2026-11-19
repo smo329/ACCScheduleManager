@@ -957,8 +957,24 @@ function getScheduled12Count(
                     dateKey
                 );
 
+            /*
+             * A locked official-holiday day (code "8") occupies a 12-hour
+             * slot just like a regular 12: the person is working that day
+             * at the clinic. Any other code "8" (a typed partial) does not.
+             */
+            const isHolidayDay =
+                entry.code === "8" &&
+                typeof window !== "undefined" &&
+                typeof window.holidayPrefillFor ===
+                    "function" &&
+                window.holidayPrefillFor(
+                    profile.id,
+                    dateKey
+                );
+
             if (
-                entry.code !== "12"
+                entry.code !== "12" &&
+                !isHolidayDay
             ) {
                 return;
             }
