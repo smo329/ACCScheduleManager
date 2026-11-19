@@ -48,7 +48,11 @@
     const byWeek=new Map();known.forEach(k=>{if(Number(k.hours||0)<12)return;const d=new Date(k.leave_date+'T12:00:00');d.setDate(d.getDate()-d.getDay());const ws=d.toISOString().slice(0,10);const key=`${k.user_id}|${ws}`;if(!byWeek.has(key))byWeek.set(key,[]);byWeek.get(key).push(k.leave_date)});
     for(const pr of waiting){for(const [key,offDates] of byWeek){const [uid,ws]=key.split('|');if(uid!==pr.id)continue;let usable=0;for(let i=0;i<7;i++){const d=new Date(ws+'T12:00:00');d.setDate(d.getDate()+i);const dk=d.toISOString().slice(0,10);if(offDates.includes(dk))continue;const cap=capMap.get(`${pr.clinic_site}|${dk}`)??defaultCap(pr.clinic_site,dk);const count=schedules.filter(r=>r.schedule_date===dk&&r.schedule_code==='12'&&((r.work_site)||((profiles||[]).find(p=>p.id===r.user_id)?.clinic_site))===pr.clinic_site).length;if(count<cap)usable++;}if(usable<=2){found.push({type:'future',severity:usable<=1?'high':'medium',title:'Future pick risk',detail:`${personName(pr.id)} · week of ${fmtDate(ws)} · only ${usable} usable 12-hour date${usable===1?'':'s'} remain after known leave`,date:ws,user_id:pr.id});}}}
 
-    issues=found.sort((a,b)=>(a.severity==='high'?0:1)-(b.severity==='high'?0:1)||String(a.date||'').localeCompare(String(b.date||'')));publish();render();return issues;
+    // Past dates are no longer actionable — a past shift can't be filled and a past over-capacity day can't be fixed.
+    // For future-pick risks the date is the week start, so the week counts as passed only once its last day is past.
+    const todayKey=getDateKey(new Date());
+    const actionable=found.filter(x=>{const dk=String(x.date||'');if(!dk)return true;if(x.type==='future'){const d=new Date(dk+'T12:00:00');d.setDate(d.getDate()+6);return getDateKey(d)>=todayKey}return dk>=todayKey;});
+    issues=actionable.sort((a,b)=>(a.severity==='high'?0:1)-(b.severity==='high'?0:1)||String(a.date||'').localeCompare(String(b.date||'')));publish();render();return issues;
   }
 
   function publish(){const p=period();window.accScheduleIssuesSummary={count:issues.length,high:issues.filter(x=>x.severity==='high').length,period_id:p?.id||null,period_name:p?.name||'selected quarter',issues:[...issues]};updateMenuBadge();renderDashboardAlert();if(typeof window.refreshNotificationCenter==='function')setTimeout(()=>window.refreshNotificationCenter(),0)}
