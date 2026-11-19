@@ -40,6 +40,225 @@
         );
     }
 
+    // Push notifications (Web Push / VAPID). The public key is safe to
+    // ship in the app; the private key lives only as a Supabase secret.
+    const PUSH_VAPID_PUBLIC_KEY =
+        "BNNEa5FHMSXl-G5CgVqMl-vcj6S8T0vZCjQMWcRgn6jWLKhWcjuG-LKCXF2IjOqIwBZ_rqEKnfaqBLHfo9IpgtA";
+    const PUSH_SW_URL = "/ACCScheduleManager/sw.js";
+    const PUSH_SW_SCOPE = "/ACCScheduleManager/";
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    function arrayBufferToBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window
+            .btoa(binary)
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+    }
+
+    function pushSupported() {
+        return (
+            "serviceWorker" in navigator &&
+            "PushManager" in window &&
+            "Notification" in window
+        );
+    }
+
+    async function getPushSubscription() {
+        try {
+            const reg = await navigator.serviceWorker.getRegistration(
+                PUSH_SW_SCOPE,
+            );
+            if (!reg) return null;
+            return await reg.pushManager.getSubscription();
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function pushStatusLine(text) {
+        const el = document.getElementById("pushStatusLine");
+        if (el) el.textContent = text || "";
+    }
+
+    async function renderPushSection() {
+        const section = document.getElementById("pushNotificationSection");
+        if (!section) return;
+
+        if (!pushSupported()) {
+            section.innerHTML = `
+                <p class="install-app-note">Push notifications aren't supported in this browser.</p>`;
+            return;
+        }
+
+        // iOS Safari cannot receive web push at all — only the installed
+        // home-screen app can, on iOS 16.4+.
+        if (isIOSDevice() && !isStandaloneMode()) {
+            section.innerHTML = `
+                <p class="install-app-note">On iPhone, push notifications only work inside the installed app. Add it to your Home Screen first, then turn them on from inside the app.</p>`;
+            return;
+        }
+
+        if (Notification.permission === "denied") {
+            section.innerHTML = `
+                <p class="install-app-note">Notifications are blocked for this site. Enable them in your browser or phone settings, then come back here.</p>`;
+            return;
+        }
+
+        const subscribed = Boolean(await getPushSubscription());
+        if (subscribed) {
+            section.innerHTML = `
+                <p class="install-app-note">Push notifications are on for this device. You'll get alerts here when your schedule opens, a trade comes in, or a new additional shift is posted.</p>
+                <button id="pushTestButton" class="modal-button" type="button">Send test notification</button>
+                <button id="pushOffButton" class="modal-button" type="button">Turn off push notifications</button>
+                <p id="pushStatusLine" class="install-app-note"></p>`;
+            const testBtn = section.querySelector("#pushTestButton");
+            if (testBtn) testBtn.onclick = sendTestPush;
+            const offBtn = section.querySelector("#pushOffButton");
+            if (offBtn) offBtn.onclick = unsubscribePush;
+            return;
+        }
+
+        section.innerHTML = `
+            <p class="install-app-note">Get schedule alerts on this device — when your schedule opens, a trade comes in, or a new additional shift is posted.</p>
+            <button id="pushOnButton" class="modal-button save-button" type="button">Turn on push notifications</button>
+            <p id="pushStatusLine" class="install-app-note"></p>`;
+        const onBtn = section.querySelector("#pushOnButton");
+        if (onBtn) onBtn.onclick = subscribePush;
+    }
+
+    async function subscribePush() {
+        pushStatusLine("");
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                pushStatusLine(
+                    "Notifications weren't enabled. You can turn them on again from this tab.",
+                );
+                renderPushSection();
+                return;
+            }
+            const reg = await navigator.serviceWorker.register(PUSH_SW_URL, {
+                scope: PUSH_SW_SCOPE,
+            });
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(
+                    PUSH_VAPID_PUBLIC_KEY,
+                ),
+            });
+            const user =
+                typeof currentUser !== "undefined" ? currentUser : null;
+            if (!user || !user.id) {
+                pushStatusLine("Sign in first, then turn on push notifications.");
+                return;
+            }
+            if (
+                typeof supabaseClient === "undefined" ||
+                !supabaseClient.from
+            ) {
+                pushStatusLine("Couldn't reach the schedule — try again.");
+                return;
+            }
+            const { error } = await supabaseClient
+                .from("push_subscriptions")
+                .upsert(
+                    {
+                        user_id: user.id,
+                        endpoint: sub.endpoint,
+                        p256dh: arrayBufferToBase64Url(sub.getKey("p256dh")),
+                        auth: arrayBufferToBase64Url(sub.getKey("auth")),
+                        user_agent: navigator.userAgent || null,
+                    },
+                    { onConflict: "endpoint" },
+                );
+            if (error) {
+                pushStatusLine("Couldn't save this device: " + error.message);
+                return;
+            }
+            renderPushSection();
+        } catch (err) {
+            pushStatusLine(
+                "Couldn't turn on push notifications: " +
+                    (err && err.message ? err.message : "unknown error"),
+            );
+        }
+    }
+
+    async function unsubscribePush() {
+        pushStatusLine("");
+        try {
+            const sub = await getPushSubscription();
+            if (sub) {
+                const endpoint = sub.endpoint;
+                await sub.unsubscribe();
+                if (
+                    typeof supabaseClient !== "undefined" &&
+                    supabaseClient.from
+                ) {
+                    await supabaseClient
+                        .from("push_subscriptions")
+                        .delete()
+                        .eq("endpoint", endpoint);
+                }
+            }
+            renderPushSection();
+        } catch (err) {
+            pushStatusLine(
+                "Couldn't turn off push notifications: " +
+                    (err && err.message ? err.message : "unknown error"),
+            );
+        }
+    }
+
+    async function sendTestPush() {
+        pushStatusLine("Sending test notification…");
+        try {
+            if (
+                typeof supabaseClient === "undefined" ||
+                !supabaseClient.functions
+            ) {
+                pushStatusLine("Couldn't reach the schedule — try again.");
+                return;
+            }
+            const { data, error } = await supabaseClient.functions.invoke(
+                "send-push-notification",
+                { body: { mode: "test" } },
+            );
+            if (error) {
+                pushStatusLine(
+                    "Test failed: " + (data && data.error ? data.error : error.message),
+                );
+                return;
+            }
+            pushStatusLine(
+                "Test sent — it should appear on this device in a moment.",
+            );
+        } catch (err) {
+            pushStatusLine(
+                "Test failed: " +
+                    (err && err.message ? err.message : "unknown error"),
+            );
+        }
+    }
+
     function themeKeyForUser() {
         const user =
             typeof currentUser !== "undefined" ? currentUser : null;
@@ -355,6 +574,7 @@
 
         if (tabName === "mobile") {
             renderInstallAppSection();
+            renderPushSection();
         }
     }
 
@@ -850,6 +1070,8 @@
             </div>
 
             <div id="installAppSection"></div>
+
+            <div id="pushNotificationSection"></div>
             `;
 
         content.appendChild(
@@ -896,6 +1118,7 @@
         );
 
         renderInstallAppSection();
+        renderPushSection();
 
         showAccountSettingsTab(
             "general"
