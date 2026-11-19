@@ -73,7 +73,7 @@
     function lastWeekday(y, m0, wd) {
         var d = new Date(y, m0 + 1, 0);
         var sub = (d.getDay() - wd + 7) % 7;
-        return new Date(y, m0 + 1, d.getDate() - sub);
+        return new Date(y, m0, d.getDate() - sub);
     }
     function easterSunday(y) {
         var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4),
@@ -519,6 +519,10 @@
     /* Locked holiday days for a user across a set of dates, for the
        full-week leave pre-check in app-patches.js. Loads the holiday
        data first if needed, then returns the prefills found. */
+    /* Synchronous prefill lookup for other modules (e.g. the availability
+       count): returns the prefill record for a user + date, or null. */
+    window.holidayPrefillFor = prefillFor;
+
     window.holidayLockedDaysFor = async function (userId, dateKeys) {
         if (!dataLoaded) await loadHolidayData();
         return (dateKeys || []).map(function (dk) {
