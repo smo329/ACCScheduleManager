@@ -95,6 +95,11 @@ Deno.serve(async (req) => {
           if (periodError) return json({ error: periodError.message }, 400);
         }
       }
+      // Remove the person from every picking queue first: a deactivated
+      // person holds no pick_order slot in any period. Clearing before
+      // the deactivation keeps the two in sync if either step fails.
+      const { error: accessError } = await adminClient.from("scheduling_period_access").update({ pick_order: null }).eq("user_id", user_id);
+      if (accessError) return json({ error: accessError.message }, 400);
       const { error } = await adminClient.from("profiles").update({ active: false, updated_at: new Date().toISOString() }).eq("id", user_id);
       if (error) return json({ error: error.message }, 400);
       return json({ success: true });
