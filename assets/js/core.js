@@ -559,6 +559,29 @@ async function startApplication(
     updateUserHeader();
 
     await loadWeek();
+
+    // The browser captures the login credentials when Sign In is clicked, so
+    // clearing the fields here does not stop the first "Save your password?"
+    // prompt — but it stops the browser from re-prompting on every later
+    // interaction while the filled-in password still sits in the hidden
+    // login form.
+    const emailField =
+        document.getElementById(
+            "email"
+        );
+
+    if (emailField) {
+        emailField.value = "";
+    }
+
+    const passwordField =
+        document.getElementById(
+            "password"
+        );
+
+    if (passwordField) {
+        passwordField.value = "";
+    }
 }
 
 
