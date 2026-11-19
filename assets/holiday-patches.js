@@ -648,10 +648,16 @@
                     });
                 });
             });
+            // Past dates are never sent to Apply — the database guards them too,
+            // but there is no reason to send a day that can no longer change.
+            var todayKey = getDateKey(new Date());
+            items = items.filter(function (it) { return String(it.holiday_date || "") >= todayKey; });
             var res = await supabaseClient.rpc("apply_holiday_prefills", { p_year: modalYear, p_items: items });
             if (res.error) throw res.error;
             var out = res.data || {};
             var lines = ["Applied " + (out.applied || 0) + " holiday days, removed " + (out.removed || 0) + "."];
+            if (out.skipped_past) lines.push("Skipped " + out.skipped_past + " past holiday(s) — past dates are never changed.");
+            if (out.skipped_trade) lines.push("Left " + out.skipped_trade + " traded holiday(s) in place — accepted trades are never reverted by Apply.");
             (out.conflicts || []).forEach(function (c) {
                 lines.push("Skipped (already scheduled): " + profileName(c.user_id) + " — "
                     + ((defs[c.holiday_key] || {}).name || c.holiday_key) + " (" + c.holiday_date + "): " + c.reason + ".");
