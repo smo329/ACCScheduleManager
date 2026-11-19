@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
       if (role !== "external" && !clinicSite) return json({ error: "Primary clinic must be Turfland or Fountain Court." }, 400);
 
       const { data: oldProfile } = await adminClient.from("profiles").select("role").eq("id", user_id).single();
+      // A provider leaving the provider role holds no picking queue slot.
+      // Cleared before the profile update so a failure leaves a clean state.
+      if (oldProfile?.role === "provider" && role !== "provider") {
+        const { error: accessError } = await adminClient.from("scheduling_period_access").update({ pick_order: null }).eq("user_id", user_id);
+        if (accessError) return json({ error: accessError.message }, 400);
+      }
       const { error } = await adminClient.from("profiles").update({
         first_name: firstName,
         last_name: lastName,
