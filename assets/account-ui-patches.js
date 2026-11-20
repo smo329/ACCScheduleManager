@@ -171,6 +171,23 @@
     async function subscribePush() {
         pushStatusLine("");
         try {
+            // Register the app worker FIRST. Samsung Internet may not show
+            // the notification permission prompt until a worker is
+            // registered for the site, so asking before registering can
+            // hang forever with no prompt.
+            pushStatusLine("Registering the app worker…");
+            const reg = await navigator.serviceWorker.register(PUSH_SW_URL, {
+                scope: PUSH_SW_SCOPE,
+            });
+            // Wait for the worker to become active before subscribing.
+            // A fresh registration is still "installing" when register()
+            // resolves, and pushManager.subscribe fails until it activates
+            // ("Subscription failed - no active Service Worker"). On a
+            // second tap the worker is already active, which is why
+            // retrying worked. navigator.serviceWorker.ready resolves once
+            // an active worker exists for this scope.
+            pushStatusLine("Waiting for the app worker…");
+            const readyReg = await navigator.serviceWorker.ready;
             // Only prompt when permission is still undecided. Samsung
             // Internet can hang on requestPermission() even when permission
             // is already granted, so skip the prompt entirely in that case.
@@ -200,19 +217,6 @@
                 renderPushSection();
                 return;
             }
-            pushStatusLine("Registering the app worker…");
-            const reg = await navigator.serviceWorker.register(PUSH_SW_URL, {
-                scope: PUSH_SW_SCOPE,
-            });
-            // Wait for the worker to become active before subscribing.
-            // A fresh registration is still "installing" when register()
-            // resolves, and pushManager.subscribe fails until it activates
-            // ("Subscription failed - no active Service Worker"). On a
-            // second tap the worker is already active, which is why
-            // retrying worked. navigator.serviceWorker.ready resolves once
-            // an active worker exists for this scope.
-            pushStatusLine("Waiting for the app worker…");
-            const readyReg = await navigator.serviceWorker.ready;
             pushStatusLine("Subscribing this device…");
             const sub = await readyReg.pushManager.subscribe({
                 userVisibleOnly: true,
