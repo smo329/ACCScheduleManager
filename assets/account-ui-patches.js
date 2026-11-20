@@ -171,6 +171,7 @@
     async function subscribePush() {
         pushStatusLine("");
         try {
+            pushStatusLine("Asking for permission…");
             const permission = await Notification.requestPermission();
             if (permission !== "granted") {
                 pushStatusLine(
@@ -179,6 +180,7 @@
                 renderPushSection();
                 return;
             }
+            pushStatusLine("Registering the app worker…");
             const reg = await navigator.serviceWorker.register(PUSH_SW_URL, {
                 scope: PUSH_SW_SCOPE,
             });
@@ -189,7 +191,9 @@
             // second tap the worker is already active, which is why
             // retrying worked. navigator.serviceWorker.ready resolves once
             // an active worker exists for this scope.
+            pushStatusLine("Waiting for the app worker…");
             const readyReg = await navigator.serviceWorker.ready;
+            pushStatusLine("Subscribing this device…");
             const sub = await readyReg.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(
@@ -209,6 +213,7 @@
                 pushStatusLine("Couldn't reach the schedule — try again.");
                 return;
             }
+            pushStatusLine("Saving this device…");
             const { error } = await supabaseClient
                 .from("push_subscriptions")
                 .upsert(
