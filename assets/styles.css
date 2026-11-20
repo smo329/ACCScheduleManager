@@ -1002,6 +1002,11 @@
                 width: 100%;
                 max-width: 100%;
                 overflow-x: hidden;
+                /* clip (not hidden) keeps the sticky topbar working —
+                   hidden turns body into a scroll container and the
+                   sticky header scrolls away with the page. Older
+                   browsers ignore clip and fall back to hidden. */
+                overflow-x: clip;
             }
 
             body {
