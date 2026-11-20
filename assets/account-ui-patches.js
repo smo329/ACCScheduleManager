@@ -33,6 +33,11 @@
         return /Mobi|Android|iPhone|iPad|iPod/i.test(ua) || isIPadOS;
     }
 
+    function isSamsungBrowser() {
+        const ua = navigator.userAgent || "";
+        return /SamsungBrowser/i.test(ua);
+    }
+
     function isStandaloneMode() {
         return (
             (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
@@ -93,6 +98,25 @@
         }
     }
 
+    // The blocked message names the actual fix for the browser in use.
+    // A denied site permission cannot be re-asked by the app — the user
+    // has to allow it in the browser's site settings. (The Android
+    // Settings → Apps toggle alone does not clear the site-level block;
+    // both layers must allow it. Samsung Internet keeps its own per-site
+    // list under Menu → Settings → Sites and downloads → Notifications.)
+    function pushBlockedMessage() {
+        if (isSamsungBrowser()) {
+            return "Notifications are blocked for this site in Samsung Internet. In Samsung Internet, go to Menu → Settings → Sites and downloads → Notifications, find this site, and set it to Allow. Then reopen the installed app.";
+        }
+        if (isIOSDevice()) {
+            return "Notifications are blocked for this site. On your iPhone, open Settings → ACC Schedule Manager → Notifications → turn on Allow Notifications. Then reopen the app.";
+        }
+        if (isMobileDevice()) {
+            return "Notifications are blocked for this site in Chrome. In Chrome, open the schedule site, tap the tune icon next to the address bar → Site settings → Notifications → Allow. Then reopen the installed app.";
+        }
+        return "Notifications are blocked for this site. Click the tune or lock icon left of the address bar → Site settings → Notifications → Allow, then reload the page.";
+    }
+
     function pushStatusLine(text) {
         const el = document.getElementById("pushStatusLine");
         if (el) el.textContent = text || "";
@@ -118,7 +142,7 @@
 
         if (Notification.permission === "denied") {
             section.innerHTML = `
-                <p class="install-app-note">Notifications are blocked for this site. Enable them in your browser or phone settings, then come back here.</p>`;
+                <p class="install-app-note">${pushBlockedMessage()}</p>`;
             return;
         }
 
@@ -256,6 +280,77 @@
                 "Test failed: " +
                     (err && err.message ? err.message : "unknown error"),
             );
+        }
+    }
+
+    // Install prompt banner: when the installed app is opened and
+    // notifications have never been answered (permission "default"), offer
+    // to turn them on. The native prompt can only appear from a user tap,
+    // so the banner is a soft prompt with a real button. It shows only in
+    // the installed app (standalone), only while permission is undecided,
+    // and never again on that device once dismissed ("Not now"). If the
+    // user grants, subscribePush runs; if they deny, permission becomes
+    // "denied" and the banner never shows again (the Mobile tab then shows
+    // the blocked message with the settings steps).
+    const PUSH_PROMPT_DISMISSED_KEY = "acc_push_prompt_dismissed";
+
+    function hidePushPromptBanner() {
+        const banner = document.getElementById("pushPromptBanner");
+        if (banner) banner.remove();
+    }
+
+    function maybeShowPushPrompt() {
+        if (!pushSupported()) return;
+        if (!isStandaloneMode()) return;
+        if (typeof Notification === "undefined") return;
+        if (Notification.permission !== "default") return;
+        if (typeof currentUser === "undefined" || !currentUser) return;
+        try {
+            if (
+                window.localStorage &&
+                window.localStorage.getItem(PUSH_PROMPT_DISMISSED_KEY)
+            )
+                return;
+        } catch (_) {
+            // Private mode or blocked storage: show the banner anyway.
+        }
+        const main = document.querySelector("#app .main-content");
+        if (!main) return;
+        if (document.getElementById("pushPromptBanner")) return;
+
+        const banner = document.createElement("div");
+        banner.id = "pushPromptBanner";
+        banner.className = "push-prompt-banner";
+        banner.innerHTML = `
+            <div class="push-prompt-banner-text">
+                <div class="push-prompt-banner-title">Get schedule alerts on this phone?</div>
+                <div class="push-prompt-banner-sub">Turn on notifications to hear when your schedule opens, a trade comes in, or a new additional shift is posted.</div>
+            </div>
+            <div class="push-prompt-banner-actions">
+                <button id="pushPromptTurnOn" class="modal-button save-button" type="button">Turn on notifications</button>
+                <button id="pushPromptDismiss" class="push-prompt-dismiss" type="button">Not now</button>
+            </div>`;
+        main.insertBefore(banner, main.firstChild);
+
+        const turnOn = banner.querySelector("#pushPromptTurnOn");
+        if (turnOn) {
+            turnOn.onclick = async () => {
+                hidePushPromptBanner();
+                await subscribePush();
+            };
+        }
+        const dismiss = banner.querySelector("#pushPromptDismiss");
+        if (dismiss) {
+            dismiss.onclick = () => {
+                try {
+                    if (window.localStorage)
+                        window.localStorage.setItem(
+                            PUSH_PROMPT_DISMISSED_KEY,
+                            "1",
+                        );
+                } catch (_) {}
+                hidePushPromptBanner();
+            };
         }
     }
 
@@ -440,6 +535,7 @@
         window.showApp = function (...args) {
             const result = originalShowApp.apply(this, args);
             applyTheme(getSavedTheme());
+            maybeShowPushPrompt();
             return result;
         };
     }
@@ -449,6 +545,7 @@
         window.updateUserHeader = function (...args) {
             const result = originalUpdateUserHeader.apply(this, args);
             applyTheme(getSavedTheme());
+            maybeShowPushPrompt();
             return result;
         };
     }
@@ -1287,6 +1384,56 @@
 
             .install-app-steps li {
                 margin-bottom:4px;
+            }
+
+            .push-prompt-banner {
+                display:flex;
+                flex-wrap:wrap;
+                gap:12px;
+                align-items:center;
+                background:#0b315f;
+                color:#fff;
+                border-radius:12px;
+                padding:14px 16px;
+                margin:0 0 16px;
+            }
+
+            .push-prompt-banner-text {
+                flex:1 1 220px;
+                min-width:0;
+            }
+
+            .push-prompt-banner-title {
+                font-weight:700;
+                font-size:15px;
+                margin-bottom:2px;
+            }
+
+            .push-prompt-banner-sub {
+                font-size:13px;
+                line-height:1.45;
+                opacity:.92;
+            }
+
+            .push-prompt-banner-actions {
+                display:flex;
+                gap:8px;
+                align-items:center;
+                margin-left:auto;
+            }
+
+            .push-prompt-banner .modal-button {
+                margin:0;
+            }
+
+            .push-prompt-dismiss {
+                background:transparent;
+                color:#fff;
+                border:1px solid rgba(255,255,255,.6);
+                border-radius:8px;
+                padding:9px 14px;
+                font-size:14px;
+                cursor:pointer;
             }
 
             #installAppSection .modal-button[disabled] {
