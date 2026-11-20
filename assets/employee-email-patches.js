@@ -148,6 +148,7 @@
                 '<span style="display:block;color:#64748b;font-size:12px;margin-top:3px;">One email at the end of the day, only on days when an admin changed a schedule or added leave. Managers, staff, and medical directors only.</span></span>' +
             "</label>" +
             '<button id="saveEmployeeEmailButton" class="modal-button save-button" type="button" style="margin-bottom:14px;">Save Notification Settings</button>' +
+            '<hr class="account-settings-divider">' +
             '<div id="employeeEmailUkyNotice" class="account-settings-help" style="display:none;"></div>' +
             '<div style="margin-bottom:14px;">' +
                 '<label style="display:block;margin-bottom:6px;"><strong>Notification email</strong>' +
