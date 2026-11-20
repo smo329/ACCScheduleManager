@@ -163,6 +163,7 @@
         section.innerHTML = `
             <p class="install-app-note">Get schedule alerts on this device — when your schedule opens, a trade comes in, or a new additional shift is posted.</p>
             <button id="pushOnButton" class="modal-button save-button" type="button">Turn on push notifications</button>
+            ${isSamsungBrowser() ? `<p class="install-app-note">This browser isn't supported for push notifications — Samsung Internet doesn't show the permission prompt. Open the schedule in Chrome to turn them on.</p>` : ""}
             <p id="pushStatusLine" class="install-app-note"></p>`;
         const onBtn = section.querySelector("#pushOnButton");
         if (onBtn) onBtn.onclick = subscribePush;
