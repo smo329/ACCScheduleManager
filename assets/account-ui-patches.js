@@ -171,8 +171,28 @@
     async function subscribePush() {
         pushStatusLine("");
         try {
-            pushStatusLine("Asking for permission…");
-            const permission = await Notification.requestPermission();
+            // Only prompt when permission is still undecided. Samsung
+            // Internet can hang on requestPermission() even when permission
+            // is already granted, so skip the prompt entirely in that case.
+            // When it is undecided, give the prompt 10 seconds — if it
+            // never appears, stop and point at the site setting instead of
+            // hanging silently.
+            let permission = Notification.permission;
+            if (permission === "default") {
+                pushStatusLine("Asking for permission…");
+                permission = await Promise.race([
+                    Notification.requestPermission(),
+                    new Promise((resolve) =>
+                        setTimeout(() => resolve("timeout"), 10000),
+                    ),
+                ]);
+                if (permission === "timeout") {
+                    pushStatusLine(
+                        "The permission prompt didn't appear. In Samsung Internet, open Menu → Settings → Sites and downloads → Notifications, find the schedule site, and set it to Allow — then tap Turn on again.",
+                    );
+                    return;
+                }
+            }
             if (permission !== "granted") {
                 pushStatusLine(
                     "Notifications weren't enabled. You can turn them on again from this tab.",
