@@ -162,8 +162,7 @@
 
         section.innerHTML = `
             <p class="install-app-note">Get schedule alerts on this device — when your schedule opens, a trade comes in, or a new additional shift is posted.</p>
-            <button id="pushOnButton" class="modal-button save-button" type="button">Turn on push notifications</button>
-            ${isSamsungBrowser() ? `<p class="install-app-note">This browser isn't supported for push notifications — Samsung Internet doesn't show the permission prompt. Open the schedule in Chrome to turn them on.</p>` : ""}
+            ${isSamsungBrowser() ? `<p class="install-app-note">This browser isn't supported for push notifications — Samsung Internet doesn't show the permission prompt. Open the schedule in Chrome to turn them on.</p>` : `<button id="pushOnButton" class="modal-button save-button" type="button">Turn on push notifications</button>`}
             <p id="pushStatusLine" class="install-app-note"></p>`;
         const onBtn = section.querySelector("#pushOnButton");
         if (onBtn) onBtn.onclick = subscribePush;
@@ -208,7 +207,7 @@
                     pushStatusLine(
                         "The permission prompt didn't appear. In Samsung Internet, open Menu → Settings → Sites and downloads → Notifications, find the schedule site, and set it to Allow — then tap Turn on again.",
                     );
-                    return;
+                    return false;
                 }
             }
             if (permission !== "granted") {
@@ -216,7 +215,7 @@
                     "Notifications weren't enabled. You can turn them on again from this tab.",
                 );
                 renderPushSection();
-                return;
+                return false;
             }
             pushStatusLine("Subscribing this device…");
             const sub = await readyReg.pushManager.subscribe({
@@ -229,14 +228,14 @@
                 typeof currentUser !== "undefined" ? currentUser : null;
             if (!user || !user.id) {
                 pushStatusLine("Sign in first, then turn on push notifications.");
-                return;
+                return false;
             }
             if (
                 typeof supabaseClient === "undefined" ||
                 !supabaseClient.from
             ) {
                 pushStatusLine("Couldn't reach the schedule — try again.");
-                return;
+                return false;
             }
             pushStatusLine("Saving this device…");
             const { error } = await supabaseClient
@@ -253,14 +252,16 @@
                 );
             if (error) {
                 pushStatusLine("Couldn't save this device: " + error.message);
-                return;
+                return false;
             }
             renderPushSection();
+            return true;
         } catch (err) {
             pushStatusLine(
                 "Couldn't turn on push notifications: " +
                     (err && err.message ? err.message : "unknown error"),
             );
+            return false;
         }
     }
 
@@ -373,8 +374,33 @@
         const turnOn = banner.querySelector("#pushPromptTurnOn");
         if (turnOn) {
             turnOn.onclick = async () => {
-                hidePushPromptBanner();
-                await subscribePush();
+                const ok = await subscribePush();
+                if (ok) {
+                    hidePushPromptBanner();
+                    return;
+                }
+                // It didn't turn on (e.g. this browser never shows the
+                // permission prompt). Say so plainly in the banner itself
+                // — the status line lives in Account Settings, which the
+                // user isn't looking at — and don't show the banner again,
+                // or it keeps promising something that can't work here.
+                try {
+                    if (window.localStorage)
+                        window.localStorage.setItem(
+                            PUSH_PROMPT_DISMISSED_KEY,
+                            "1",
+                        );
+                } catch (_) {}
+                banner.innerHTML = `
+                    <div class="push-prompt-banner-text">
+                        <div class="push-prompt-banner-title">Notifications couldn't be turned on</div>
+                        <div class="push-prompt-banner-sub">${isSamsungBrowser() ? "Samsung Internet doesn't show the notification permission prompt. Open the schedule in Chrome to turn on push notifications." : "Try again from Account Settings → Mobile, or open the schedule in Chrome."}</div>
+                    </div>
+                    <div class="push-prompt-banner-actions">
+                        <button id="pushPromptDismiss" class="push-prompt-dismiss" type="button">Got it</button>
+                    </div>`;
+                const gotIt = banner.querySelector("#pushPromptDismiss");
+                if (gotIt) gotIt.onclick = hidePushPromptBanner;
             };
         }
         const dismiss = banner.querySelector("#pushPromptDismiss");
