@@ -182,7 +182,15 @@
             const reg = await navigator.serviceWorker.register(PUSH_SW_URL, {
                 scope: PUSH_SW_SCOPE,
             });
-            const sub = await reg.pushManager.subscribe({
+            // Wait for the worker to become active before subscribing.
+            // A fresh registration is still "installing" when register()
+            // resolves, and pushManager.subscribe fails until it activates
+            // ("Subscription failed - no active Service Worker"). On a
+            // second tap the worker is already active, which is why
+            // retrying worked. navigator.serviceWorker.ready resolves once
+            // an active worker exists for this scope.
+            const readyReg = await navigator.serviceWorker.ready;
+            const sub = await readyReg.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(
                     PUSH_VAPID_PUBLIC_KEY,
