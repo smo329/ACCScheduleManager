@@ -1153,6 +1153,21 @@
             );
         }
 
+        // Push notifications live here now (not the Mobile tab) — they
+        // work in desktop and mobile browsers, not just the installed app.
+        const pushDivider = document.createElement("hr");
+        pushDivider.className = "account-settings-divider";
+        notifications.appendChild(pushDivider);
+
+        const pushTitle = document.createElement("div");
+        pushTitle.className = "account-settings-section-title";
+        pushTitle.textContent = "Push notifications";
+        notifications.appendChild(pushTitle);
+
+        const pushSection = document.createElement("div");
+        pushSection.id = "pushNotificationSection";
+        notifications.appendChild(pushSection);
+
         const account =
             document.createElement(
                 "section"
@@ -1231,8 +1246,6 @@
             </div>
 
             <div id="installAppSection"></div>
-
-            <div id="pushNotificationSection"></div>
             `;
 
         content.appendChild(
@@ -1429,6 +1442,12 @@
                 color:#64748b;
                 font-size:13px;
                 margin-bottom:22px;
+            }
+
+            .account-settings-divider {
+                border:0;
+                border-top:1px solid #e2e8f0;
+                margin:26px 0 22px;
             }
 
             .install-app-note {
