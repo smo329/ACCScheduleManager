@@ -3710,9 +3710,52 @@ async function submitQuarter() {
                 }
             );
 
+    /* Floaters can pick at either clinic once both queues
+       clear, so a floater based at the other clinic still
+       counts as a remaining picker here. Without this the gate
+       undercounts the pickers who could fill a day and falsely
+       blocks submission — e.g. a 2-shift day with only the one
+       waiting picker counted, while the floater could fill the
+       second shift. Their access row lives at their home
+       clinic, so check that row (not closed) instead of a row
+       at this clinic. Floaters based at this clinic are
+       already in waiting/openOthers, so they are excluded here
+       to avoid double-counting. */
+    const floaterOthers =
+        (profiles || [])
+            .filter(
+                profile => {
+
+                    if (
+                        !profile.active ||
+                        profile.role !==
+                            "provider" ||
+                        !profile.is_floater ||
+                        profile.clinic_site ===
+                            holderClinic ||
+                        profile.id ===
+                            currentUser.id
+                    ) {
+
+                        return false;
+                    }
+
+                    const access =
+                        accessById.get(
+                            profile.id
+                        );
+
+                    return Boolean(
+                        access &&
+                        !access.closed_at
+                    );
+                }
+            );
+
     const remainingPickers =
         waiting.concat(
-            openOthers
+            openOthers,
+            floaterOthers
         );
 
     /* Coverage gate: a day is at risk when its unfilled
