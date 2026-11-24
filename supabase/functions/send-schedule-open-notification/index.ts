@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   const fromEmail = Deno.env.get("RESEND_FROM_EMAIL");
   const siteUrl =
     Deno.env.get("ACC_SCHEDULE_SITE_URL") ||
-    "https://smo329.github.io/ACCScheduleManager/";
+    "https://acc-schedule-manager.pages.dev/";
 
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: "Supabase server configuration is missing." }, 500);
