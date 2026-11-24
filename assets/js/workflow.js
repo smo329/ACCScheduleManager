@@ -3710,18 +3710,21 @@ async function submitQuarter() {
                 }
             );
 
-    /* Floaters can pick at either clinic once both queues
-       clear, so a floater based at the other clinic still
-       counts as a remaining picker here. Without this the gate
-       undercounts the pickers who could fill a day and falsely
-       blocks submission — e.g. a 2-shift day with only the one
-       waiting picker counted, while the floater could fill the
-       second shift. Their access row lives at their home
-       clinic, so check that row (not closed) instead of a row
-       at this clinic. Floaters based at this clinic are
-       already in waiting/openOthers, so they are excluded here
-       to avoid double-counting. */
-    const floaterOthers =
+    const remainingPickers =
+        waiting.concat(
+            openOthers
+        );
+
+    /* Floaters are NOT remaining pickers: they pick last and fill
+       whatever remains at the end, so they must never be counted
+       in remainingPickers — that list also drives the "last picker
+       is never blocked" rule, and a floater in it would wrongly
+       block the last regular picker. A floater based at the other
+       clinic is only mop-up cover for a day: they can fill one
+       12-hour shift that day. Their access row lives at their
+       home clinic, so check that row (not closed). Floaters based
+       at this clinic are already in waiting/openOthers. */
+    const floaterMopup =
         (profiles || [])
             .filter(
                 profile => {
@@ -3751,12 +3754,6 @@ async function submitQuarter() {
                     );
                 }
             );
-
-    const remainingPickers =
-        waiting.concat(
-            openOthers,
-            floaterOthers
-        );
 
     /* Coverage gate: a day is at risk when its unfilled
        12-hour slots outnumber the remaining pickers at this
@@ -3911,8 +3908,46 @@ async function submitQuarter() {
                         }
                     ).length;
 
+                /* Mop-up cover: each floater who could still fill
+                   this day (no 12, no leave) absorbs one open
+                   shift. This is the floater filling whatever
+                   remains at the end — it never makes them a
+                   remaining picker. */
+                const floaterCover =
+                    floaterMopup.filter(
+                        profile => {
+
+                            const row =
+                                allSchedules.find(
+                                    item =>
+                                        item.user_id ===
+                                            profile.id &&
+                                        item.schedule_date ===
+                                            dateKey
+                                );
+
+                            if (
+                                row &&
+                                row.schedule_code ===
+                                    "12"
+                            ) {
+
+                                return false;
+                            }
+
+                            return (
+                                leaveByUserDate.get(
+                                    profile.id +
+                                        "|" +
+                                        dateKey
+                                ) || 0
+                            ) === 0;
+                        }
+                    ).length;
+
                 if (
-                    remaining > available
+                    remaining >
+                        available + floaterCover
                 ) {
 
                     coverageRisks.push(
