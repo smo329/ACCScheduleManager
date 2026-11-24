@@ -49,8 +49,8 @@
     // ship in the app; the private key lives only as a Supabase secret.
     const PUSH_VAPID_PUBLIC_KEY =
         "BNNEa5FHMSXl-G5CgVqMl-vcj6S8T0vZCjQMWcRgn6jWLKhWcjuG-LKCXF2IjOqIwBZ_rqEKnfaqBLHfo9IpgtA";
-    const PUSH_SW_URL = "/ACCScheduleManager/sw.js";
-    const PUSH_SW_SCOPE = "/ACCScheduleManager/";
+    const PUSH_SW_URL = "/sw.js";
+    const PUSH_SW_SCOPE = "/";
 
     function urlBase64ToUint8Array(base64String) {
         const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
