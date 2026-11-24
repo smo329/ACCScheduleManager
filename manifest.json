@@ -22,8 +22,8 @@
   ],
   "name": "ACC Schedule Manager",
   "orientation": "portrait",
-  "scope": "/ACCScheduleManager/",
+  "scope": "/",
   "short_name": "ACC Schedule",
-  "start_url": "/ACCScheduleManager/",
+  "start_url": "/",
   "theme_color": "#0b315f"
 }
