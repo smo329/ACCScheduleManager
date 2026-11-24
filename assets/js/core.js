@@ -299,6 +299,28 @@ async function logout() {
 
 function showLogin() {
 
+    // Re-enable the login fields for the next sign-in (they are
+    // disabled while signed in so the browser stops re-offering to
+    // save the password).
+    const loginEmailField =
+        document.getElementById(
+            "email"
+        );
+
+    if (loginEmailField) {
+        loginEmailField.disabled = false;
+    }
+
+    const loginPasswordField =
+        document.getElementById(
+            "password"
+        );
+
+    if (loginPasswordField) {
+        loginPasswordField.disabled = false;
+        loginPasswordField.setAttribute("autocomplete", "current-password");
+    }
+
     document
         .getElementById("app")
         .style.setProperty(
@@ -572,6 +594,10 @@ async function startApplication(
 
     if (emailField) {
         emailField.value = "";
+        // Disabled while signed in: the browser no longer sees a live
+        // login form, so it stops re-offering "Save your password?" on
+        // every later interaction. Re-enabled in showLogin().
+        emailField.disabled = true;
     }
 
     const passwordField =
@@ -581,6 +607,12 @@ async function startApplication(
 
     if (passwordField) {
         passwordField.value = "";
+        // "new-password" tells the browser this is not a login
+        // credential field, so it will not autofill it back or offer
+        // to save it again. Restored to "current-password" in
+        // showLogin(). Disabled while signed in, like the email field.
+        passwordField.setAttribute("autocomplete", "new-password");
+        passwordField.disabled = true;
     }
 }
 
