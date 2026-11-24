@@ -11,12 +11,12 @@ self.addEventListener("push", (event) => {
   }
   const title = data.title || "ACC Schedule Manager";
   const body = data.body || "You have a new notification.";
-  const url = data.url || "/ACCScheduleManager/";
+  const url = data.url || "/";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: body,
-      icon: "/ACCScheduleManager/assets/icon-192.png",
-      badge: "/ACCScheduleManager/assets/icon-192.png",
+      icon: "/assets/icon-192.png",
+      badge: "/assets/icon-192.png",
       data: { url: url },
     }),
   );
@@ -26,7 +26,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url =
     (event.notification.data && event.notification.data.url) ||
-    "/ACCScheduleManager/";
+    "/";
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
