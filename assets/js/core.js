@@ -318,6 +318,7 @@ function showLogin() {
 
     if (loginPasswordField) {
         loginPasswordField.disabled = false;
+        loginPasswordField.setAttribute("type", "password");
         loginPasswordField.setAttribute("autocomplete", "current-password");
     }
 
@@ -577,16 +578,16 @@ async function startApplication(
         return;
     }
 
-    showApp();
-    updateUserHeader();
-
-    await loadWeek();
-
-    // The browser captures the login credentials when Sign In is clicked, so
-    // clearing the fields here does not stop the first "Save your password?"
-    // prompt — but it stops the browser from re-prompting on every later
-    // interaction while the filled-in password still sits in the hidden
-    // login form.
+    // Neutralize the login fields BEFORE the login screen is hidden:
+    // hiding a filled password field is what makes the browser offer
+    // to save it (and re-offer it on later interactions). The previous
+    // version cleared the fields after loadWeek(), by which time the
+    // screen was already hidden with the password still in the field
+    // — that is why it worked on a fresh load but not on a sign-out /
+    // sign-in inside the same page load. Clearing the value, switching
+    // the input to plain text (so it is no longer a password field at
+    // all), and disabling both fields removes the trigger entirely.
+    // showLogin() restores everything for the next sign-in.
     const emailField =
         document.getElementById(
             "email"
@@ -594,9 +595,6 @@ async function startApplication(
 
     if (emailField) {
         emailField.value = "";
-        // Disabled while signed in: the browser no longer sees a live
-        // login form, so it stops re-offering "Save your password?" on
-        // every later interaction. Re-enabled in showLogin().
         emailField.disabled = true;
     }
 
@@ -607,13 +605,15 @@ async function startApplication(
 
     if (passwordField) {
         passwordField.value = "";
-        // "new-password" tells the browser this is not a login
-        // credential field, so it will not autofill it back or offer
-        // to save it again. Restored to "current-password" in
-        // showLogin(). Disabled while signed in, like the email field.
+        passwordField.setAttribute("type", "text");
         passwordField.setAttribute("autocomplete", "new-password");
         passwordField.disabled = true;
     }
+
+    showApp();
+    updateUserHeader();
+
+    await loadWeek();
 }
 
 
