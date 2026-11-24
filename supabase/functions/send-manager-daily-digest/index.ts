@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
   const siteUrl =
     Deno.env.get("ACC_SCHEDULE_SITE_URL") ||
-    "https://smo329.github.io/ACCScheduleManager/";
+    "https://acc-schedule-manager.pages.dev/";
 
   if (
     !supabaseUrl ||
